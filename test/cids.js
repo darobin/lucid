@@ -1,10 +1,8 @@
 
 import { equal } from 'node:assert';
-import { Buffer } from 'node:buffer';
 import { readFile } from 'node:fs/promises';
-import { blake3 } from 'hash-wasm';
 import makeRel from '../lib/rel.js';
-import { parse, codecs } from "../cid.js";
+import { parse, codecs, fromRaw, hash } from "../cid.js";
 
 const rel = makeRel(import.meta.url);
 
@@ -14,7 +12,7 @@ const wtf = 'bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu';
 
 before(async () => {
   wtfData = await readFile(rel('fixtures/wtf.jpg'));
-  wtfHash = await blake3(wtfData);
+  wtfHash = await hash(wtfData);
 });
 describe('CID parsing', () => {
   it('parses a valid CID', () => {
@@ -23,6 +21,13 @@ describe('CID parsing', () => {
     equal(codec, codecs.raw, 'codec must be raw');
     equal(codecType, 'raw-bytes', 'codec type must be raw-bytes');
     equal(hashType, 'blake3', 'hash type must be blake3');
-    equal(new Buffer(hash).toString('hex'), wtfHash, 'hash must be the right one');
+    equal(hash, wtfHash, 'hash must be the right one');
+  });
+});
+
+describe('CID minting', () => {
+  it('mints a valid CID for bytes', async () => {
+    const cid = await fromRaw(wtfData);
+    equal(cid, wtf, 'CID is correct');
   });
 });
