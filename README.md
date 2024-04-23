@@ -20,3 +20,6 @@ have two requirements:
 This is a highly opinionated and arguably wrong set of options. No blocks means that big files are big 
 and will need to be split at a separate layer if that is desirable (e.g. seekable video will need to
 use MPEG-DASH or something similar).
+
+One valuable property of LUCIDs is that they can be string-compared. They only need to parsed when there
+is a need to access the codec or the hash.

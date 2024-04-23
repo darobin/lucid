@@ -29,5 +29,8 @@
   "devDependencies": {
     "eslint": "^8.26.0",
     "mocha": "^10.4.0"
+  },
+  "dependencies": {
+    "hash-wasm": "^4.11.0"
   }
 }

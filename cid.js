@@ -1,11 +1,14 @@
 
 const b32codes = new Map('abcdefghijklmnopqrstuvwxyz234567'.split('').map((k, i) => [k, i]));
-console.warn(b32codes);
+
 export const codecs = {
   raw: 0x55,
   dagCBOR: 0x71,
 };
 const supportedCodecs = new Set(Object.values(codecs));
+
+const blake3Code = 0x1e;
+const blake3Size = 32;
 
 const MSB = 0x80;
 const REST = 0x7F;
@@ -37,7 +40,7 @@ export function parse (cid) {
       }
     }
     if (bits >= bitsPerChar || 0xff & (buffer << (8 - bits))) {
-      console.warn(bits, bitsPerChar, 0xff & (buffer << (8 - bits)));
+      // console.error(bits, bitsPerChar, 0xff & (buffer << (8 - bits)));
       throw new Error('Unexpected end of data');
     }
   }
@@ -49,9 +52,11 @@ export function parse (cid) {
   if (version !== 1) throw new Error(`Only version 1 is supported, got ${version}.`);
   const { value: codec, offset: restOffset } = varint(uarr, offset);
   if (!supportedCodecs.has(codec)) throw new Error(`Unsupported CID content type ${codec}`);
-  const multihash = new Uint8Array(uarr, restOffset);
-  // XXX and the multihash
-  return { version, codec, multihash };
+  const multihashBytes = uarr.slice(restOffset);
+  if (multihashBytes[0] !== blake3Code) throw new Error(`The only supported hash type is Blake3, got "${multihashBytes[0]}".`);
+  if (multihashBytes[1] !== blake3Size) throw new Error('Wrong size for Blake3 hash.');
+  const hash = multihashBytes.slice(2);
+  return { version, codec, codecType: (codec === codecs.raw) ? 'raw-bytes' : 'dag-cbor', hash, hashType: 'blake3' };
 }
 
 function varint (buf, offset = 0) {
