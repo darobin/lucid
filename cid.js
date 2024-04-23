@@ -2,17 +2,17 @@
 import { Buffer } from 'node:buffer';
 import { blake3 } from 'hash-wasm';
 
-const b32alphabet = 'abcdefghijklmnopqrstuvwxyz234567';
-const b32codes = new Map(b32alphabet.split('').map((k, i) => [k, i]));
+const B32_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567';
+const B32_CODES = new Map(B32_ALPHABET.split('').map((k, i) => [k, i]));
 
-export const codecs = {
+export const CODECS = {
   raw: 0x55,
   dagCBOR: 0x71,
 };
-const supportedCodecs = new Set(Object.values(codecs));
+const SUPPORTED_CODECS = new Set(Object.values(CODECS));
 
-const blake3Code = 0x1e;
-const blake3Size = 32;
+const BLAKE3_CODE = 0x1e;
+const BLAKE3_SIZE = 32;
 
 const BITS_PER_CHAR = 5;
 
@@ -32,8 +32,8 @@ export function parse (cid) {
     let buffer = 0;
     let written = 0;
     for (let i = 0; i < cid.length; i++) {
-      if (!b32codes.has(cid[i])) throw new Error(`Invalid character "${cid[i]}"`);
-      const value = b32codes.get(cid[i]);
+      if (!B32_CODES.has(cid[i])) throw new Error(`Invalid character "${cid[i]}"`);
+      const value = B32_CODES.get(cid[i]);
       buffer = (buffer << BITS_PER_CHAR) | value;
       bits += BITS_PER_CHAR;
       if (bits >= 8) {
@@ -53,16 +53,16 @@ export function parse (cid) {
   const version = uarr[0];
   if (version !== 1) throw new Error(`Only version 1 is supported, got ${version}.`);
   const codec = uarr[1];
-  if (!supportedCodecs.has(codec)) throw new Error(`Unsupported CID codec ${codec}`);
+  if (!SUPPORTED_CODECS.has(codec)) throw new Error(`Unsupported CID codec ${codec}`);
   const multihashBytes = uarr.slice(2);
-  if (multihashBytes[0] !== blake3Code) throw new Error(`The only supported hash type is Blake3, got "${multihashBytes[0]}".`);
-  if (multihashBytes[1] !== blake3Size) throw new Error('Wrong size for Blake3 hash.');
+  if (multihashBytes[0] !== BLAKE3_CODE) throw new Error(`The only supported hash type is Blake3, got "${multihashBytes[0]}".`);
+  if (multihashBytes[1] !== BLAKE3_SIZE) throw new Error('Wrong size for Blake3 hash.');
   const hash = Buffer.from(multihashBytes.slice(2)).toString('hex');
-  return { version, codec, codecType: (codec === codecs.raw) ? 'raw-bytes' : 'dag-cbor', hash, hashType: 'blake3' };
+  return { version, codec, codecType: (codec === CODECS.raw) ? 'raw-bytes' : 'dag-cbor', hash, hashType: 'blake3' };
 }
 
 export async function fromRaw (buf) {
-  return await makeCID(buf, codecs.raw);
+  return await makeCID(buf, CODECS.raw);
 }
 
 // export async function fromData (obj) {
@@ -80,7 +80,7 @@ export async function fromRaw (buf) {
 // varints properly.
 async function makeCID (buf, codec) {
   const hashBytes = Buffer.from(await hash(buf), 'hex');
-  const uarr = [1, codec, blake3Code, blake3Size, ...hashBytes];
+  const uarr = [1, codec, BLAKE3_CODE, BLAKE3_SIZE, ...hashBytes];
 
   const mask = (1 << BITS_PER_CHAR) - 1;
   let cid = 'b';
@@ -91,10 +91,10 @@ async function makeCID (buf, codec) {
     bits += 8;
     while (bits > BITS_PER_CHAR) {
       bits -= BITS_PER_CHAR;
-      cid += b32alphabet[mask & (buffer >> bits)];
+      cid += B32_ALPHABET[mask & (buffer >> bits)];
     }
   }
-  if (bits !== 0) cid += b32alphabet[mask & (buffer << (BITS_PER_CHAR - bits))];
+  if (bits !== 0) cid += B32_ALPHABET[mask & (buffer << (BITS_PER_CHAR - bits))];
   return cid;
 }
 

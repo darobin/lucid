@@ -2,7 +2,7 @@
 import { equal, throws } from 'node:assert';
 import { readFile } from 'node:fs/promises';
 import makeRel from '../lib/rel.js';
-import { parse, codecs, fromRaw, hash } from "../cid.js";
+import { parse, CODECS, fromRaw, hash } from "../cid.js";
 
 const rel = makeRel(import.meta.url);
 
@@ -18,7 +18,7 @@ describe('CID parsing', () => {
   it('parses a valid CID', () => {
     const { version, codec, codecType, hash, hashType } = parse(wtf);
     equal(version, 1, 'version must be 1');
-    equal(codec, codecs.raw, 'codec must be raw');
+    equal(codec, CODECS.raw, 'codec must be raw');
     equal(codecType, 'raw-bytes', 'codec type must be raw-bytes');
     equal(hashType, 'blake3', 'hash type must be blake3');
     equal(hash, wtfHash, 'hash must be the right one');
