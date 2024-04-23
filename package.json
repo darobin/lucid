@@ -1,0 +1,30 @@
+{
+  "name": "lucid",
+  "type": "module",
+  "version": "0.0.1",
+  "description": "LUCID — Lightweight Universal CIDs",
+  "author": "Robin Berjon <robin@berjon.com>",
+  "scripts": {},
+  "bin": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/darobin/lucid.git"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "mocha": true,
+      "es2021": true
+    },
+    "extends": "eslint:recommended",
+    "overrides": [],
+    "parserOptions": {
+      "ecmaVersion": "latest",
+      "sourceType": "module"
+    },
+    "rules": {}
+  },
+  "devDependencies": {
+    "eslint": "^8.26.0"
+  }
+}
