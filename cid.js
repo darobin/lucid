@@ -52,11 +52,11 @@ export function parse (cid) {
   else {
     uarr = cid;
   }
-  if (uarr[0] === 18) throw new Error('CIDv0 is not supported.');
+  if (uarr[0] === 18 || uarr[0] === 0) throw new Error('CIDv0 is not supported.');
   const { value: version, offset } = varint(uarr);
   if (version !== 1) throw new Error(`Only version 1 is supported, got ${version}.`);
   const { value: codec, offset: restOffset } = varint(uarr, offset);
-  if (!supportedCodecs.has(codec)) throw new Error(`Unsupported CID content type ${codec}`);
+  if (!supportedCodecs.has(codec)) throw new Error(`Unsupported CID codec ${codec}`);
   const multihashBytes = uarr.slice(restOffset);
   if (multihashBytes[0] !== blake3Code) throw new Error(`The only supported hash type is Blake3, got "${multihashBytes[0]}".`);
   if (multihashBytes[1] !== blake3Size) throw new Error('Wrong size for Blake3 hash.');
@@ -72,9 +72,18 @@ export async function fromRaw (buf) {
 // 
 // }
 
-async function makeCID (buf, type) {
+// IMPORTANT NOTE
+// Because of the options that we are working with, all of the varints that we need to encode are
+// smaller than 128. This means that the int and the varint have the same bytes. This is true of:
+//  - version: 1
+//  - codec: 85, 113
+//  - hash: 30
+//  - hash size: 32
+// Less code better. However, IF a value larger than 127 needs to be encoded, we'll have to support
+// varints properly.
+async function makeCID (buf, codec) {
   const hashBytes = Buffer.from(await hash(buf), 'hex');
-  const uarr = [1, type, blake3Code, blake3Size, ...hashBytes];
+  const uarr = [1, codec, blake3Code, blake3Size, ...hashBytes];
 
   const mask = (1 << BITS_PER_CHAR) - 1;
   let cid = 'b';
