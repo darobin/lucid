@@ -16,9 +16,6 @@ const blake3Size = 32;
 
 const BITS_PER_CHAR = 5;
 
-const MSB = 0x80;
-const REST = 0x7F;
-
 // Gets a CID as string or Uint8Array.
 // Returns a structure with all components.
 // Throws if we don't support it.
@@ -52,12 +49,12 @@ export function parse (cid) {
   else {
     uarr = cid;
   }
-  if (uarr[0] === 18 || uarr[0] === 0) throw new Error('CIDv0 is not supported.');
-  const { value: version, offset } = varint(uarr);
+  // IMPORTANT: we don't process varints because for now we don't need to. See details on makeCID().
+  const version = uarr[0];
   if (version !== 1) throw new Error(`Only version 1 is supported, got ${version}.`);
-  const { value: codec, offset: restOffset } = varint(uarr, offset);
+  const codec = uarr[1];
   if (!supportedCodecs.has(codec)) throw new Error(`Unsupported CID codec ${codec}`);
-  const multihashBytes = uarr.slice(restOffset);
+  const multihashBytes = uarr.slice(2);
   if (multihashBytes[0] !== blake3Code) throw new Error(`The only supported hash type is Blake3, got "${multihashBytes[0]}".`);
   if (multihashBytes[1] !== blake3Size) throw new Error('Wrong size for Blake3 hash.');
   const hash = Buffer.from(multihashBytes.slice(2)).toString('hex');
@@ -99,24 +96,6 @@ async function makeCID (buf, codec) {
   }
   if (bits !== 0) cid += b32alphabet[mask & (buffer << (BITS_PER_CHAR - bits))];
   return cid;
-}
-
-function varint (buf, offset = 0) {
-  let value = 0;
-  let shift = 0;
-  let counter = offset;
-  let b;
-
-  do {
-    if (counter >= buf.length) throw new Error('Could not decode varint');
-    b = buf[counter++];
-    value += shift < 28
-      ? (b & REST) << shift
-      : (b & REST) * Math.pow(2, shift);
-    shift += 7;
-  } while (b >= MSB)
-
-  return { value, offset: counter };
 }
 
 export async function hash (buf) {
