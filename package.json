@@ -4,7 +4,9 @@
   "version": "0.0.1",
   "description": "LUCID — Lightweight Universal CIDs",
   "author": "Robin Berjon <robin@berjon.com>",
-  "scripts": {},
+  "scripts": {
+    "test": "mocha"
+  },
   "bin": {},
   "repository": {
     "type": "git",
@@ -25,6 +27,7 @@
     "rules": {}
   },
   "devDependencies": {
-    "eslint": "^8.26.0"
+    "eslint": "^8.26.0",
+    "mocha": "^10.4.0"
   }
 }
