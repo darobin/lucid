@@ -75,9 +75,9 @@ export async function fromData (obj) {
 
 // XXX test me
 export async function fromStream (s) {
+  const b3 = await createBLAKE3();
+  b3.init();
   return new Promise((resolve, reject) => {
-    const b3 = createBLAKE3();
-    b3.init();
     s.on('data', (chunk) => b3.update(chunk));
     s.on('error', reject);
     s.on('end', async () => resolve(await makeCIDFromHash(b3.digest('binary'), CODECS.raw)));

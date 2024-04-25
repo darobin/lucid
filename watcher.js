@@ -26,21 +26,25 @@ export default class Watcher extends EventEmitter {
         if (!this.eventing) return;
         this.emit(this.cid2path);
       };
-      this.watcher.on('add', async () => {
-        await mapToCID();
+      this.watcher.on('add', async (path) => {
+        // console.warn(`add ${path}`);
+        await mapToCID(path);
         update();
       });
       this.watcher.on('change', async (path) => {
+        // console.warn(`change ${path}`);
         if (this.path2cid[path]) delete this.cid2path[this.path2cid[path]];
         await mapToCID(path);
         update();
       });
       this.watcher.on('unlink', async (path) => {
+        // console.warn(`del ${path}`);
         if (this.path2cid[path]) delete this.cid2path[this.path2cid[path]];
         delete this.path2cid[path];
         update();
       });
       this.watcher.on('ready', () => {
+        // console.warn(`ready!`);
         this.eventing = true;
         resolve(this.cid2path);
       });

@@ -23,7 +23,14 @@ after(async () => {
 });
 describe('Watcher', () => {
   it('correctly processes initial directory', () => {
-    console.warn(`data`, JSON.stringify(initialData, null, 2));
+    deepEqual(
+      initialData, 
+      {
+        bafkr4igtrzvbqw3wshqujdhvscbd4jfnglovn3hizefgc432gtlnj3twgq: "index.html",
+        bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu: "wtf.jpg",
+      },
+      'initial read correct'
+    );
   });
   // XXX
   // - add a file
