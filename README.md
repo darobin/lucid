@@ -16,6 +16,7 @@ have two requirements:
    3. Only the raw-binary codec (`0x55`) and (maybe) dag-cbor (`0x71`).
    4. Only Blake3 hashes (`0x1e`).
    5. No blocks.
+   6. This set of options has the added advantage that no varint processing is required.
 
 This is a highly opinionated and arguably wrong set of options. No blocks means that big files are big 
 and will need to be split at a separate layer if that is desirable (e.g. seekable video will need to
