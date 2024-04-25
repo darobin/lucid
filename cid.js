@@ -1,6 +1,6 @@
 
 import { Buffer } from 'node:buffer';
-import { blake3 } from 'hash-wasm';
+import { blake3, createBLAKE3 } from 'hash-wasm';
 import { encode } from '@ipld/dag-cbor';
 
 const B32_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567';
@@ -73,9 +73,16 @@ export async function fromData (obj) {
   return await makeCID(buf, CODECS.dagCBOR);
 }
 
-// export async function fromStream (s) {
-// 
-// }
+// XXX test me
+export async function fromStream (s) {
+  return new Promise((resolve, reject) => {
+    const b3 = createBLAKE3();
+    b3.init();
+    s.on('data', (chunk) => b3.update(chunk));
+    s.on('error', reject);
+    s.on('end', async () => resolve(await makeCIDFromHash(b3.digest('binary'), CODECS.raw)));
+  });
+}
 
 // IMPORTANT NOTE
 // Because of the options that we are working with, all of the varints that we need to encode are
@@ -88,6 +95,10 @@ export async function fromData (obj) {
 // varints properly.
 async function makeCID (buf, codec) {
   const hashBytes = Buffer.from(await hash(buf), 'hex');
+  return await makeCIDFromHash(hashBytes, codec);
+}
+
+async function makeCIDFromHash (hashBytes, codec) {
   const uarr = [1, codec, BLAKE3_CODE, BLAKE3_SIZE, ...hashBytes];
 
   const mask = (1 << BITS_PER_CHAR) - 1;
