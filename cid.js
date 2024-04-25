@@ -1,6 +1,7 @@
 
 import { Buffer } from 'node:buffer';
 import { blake3 } from 'hash-wasm';
+import { encode } from '@ipld/dag-cbor';
 
 const B32_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567';
 const B32_CODES = new Map(B32_ALPHABET.split('').map((k, i) => [k, i]));
@@ -65,7 +66,14 @@ export async function fromRaw (buf) {
   return await makeCID(buf, CODECS.raw);
 }
 
-// export async function fromData (obj) {
+// NOTE: in order for it to encode correctly, the CIDs in the data will have to be CID objects
+// from multiformats.
+export async function fromData (obj) {
+  const buf = encode(obj);
+  return await makeCID(buf, CODECS.dagCBOR);
+}
+
+// export async function fromStream (s) {
 // 
 // }
 
