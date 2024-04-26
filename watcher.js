@@ -24,28 +24,28 @@ export default class Watcher extends EventEmitter {
         this.path2cid[path] = cid;
         return cid;
       };
-      const update = (type, cid) => {
+      const update = (type, cid, path) => {
         if (!this.eventing) return;
-        process.nextTick(() => this.emit('update', this.cid2path, type, cid));
+        process.nextTick(() => this.emit('update', this.cid2path, type, cid, path));
       };
       this.watcher.on('add', async (path) => {
         const cid = await mapToCID(path);
         // console.warn(`# add ${path} (${stats ? stats.size : 'NO STATS'})`);
-        update('add', cid);
+        update('add', cid, path);
       });
       this.watcher.on('change', async (path) => {
         if (this.path2cid[path]) delete this.cid2path[this.path2cid[path]];
         const cid = await mapToCID(path);
         // console.warn(`# change ${path} (${stats ? stats.size : 'NO STATS'})`);
         // console.warn(`#   new CID (${path}): ${cid}`);
-        update('change', cid);
+        update('change', cid, path);
       });
       this.watcher.on('unlink', async (path) => {
         // console.warn(`# del ${path}`);
         const cid = this.path2cid[path];
         if (cid) delete this.cid2path[cid];
         delete this.path2cid[path];
-        update('delete', cid);
+        update('delete', cid, path);
       });
       this.watcher.on('ready', () => {
         // console.warn(`# ready!`);

@@ -69,8 +69,12 @@ export async function fromRaw (buf) {
 // NOTE: in order for it to encode correctly, the CIDs in the data will have to be CID objects
 // from multiformats.
 export async function fromData (obj) {
+  const [cid, ] = await fromDataWithData(obj);
+  return cid;
+}
+export async function fromDataWithData (obj) {
   const buf = encode(obj);
-  return await makeCID(buf, CODECS.dagCBOR);
+  return [await makeCID(buf, CODECS.dagCBOR), buf];
 }
 
 // XXX test me
