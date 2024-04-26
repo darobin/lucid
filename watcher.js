@@ -1,4 +1,5 @@
 
+import process from 'node:process';
 import { join } from 'node:path';
 import { createReadStream } from 'node:fs';
 import { EventEmitter } from 'node:events';
@@ -21,32 +22,37 @@ export default class Watcher extends EventEmitter {
         const cid = await fromStream(createReadStream(join(this.path, path)));
         this.cid2path[cid] = path;
         this.path2cid[path] = cid;
+        return cid;
       };
-      const update = () => {
+      const update = (type, cid) => {
         if (!this.eventing) return;
-        this.emit(this.cid2path);
+        process.nextTick(() => this.emit('update', this.cid2path, type, cid));
       };
       this.watcher.on('add', async (path) => {
-        // console.warn(`add ${path}`);
-        await mapToCID(path);
-        update();
+        const cid = await mapToCID(path);
+        // console.warn(`# add ${path} (${stats ? stats.size : 'NO STATS'})`);
+        update('add', cid);
       });
       this.watcher.on('change', async (path) => {
-        // console.warn(`change ${path}`);
         if (this.path2cid[path]) delete this.cid2path[this.path2cid[path]];
-        await mapToCID(path);
-        update();
+        const cid = await mapToCID(path);
+        // console.warn(`# change ${path} (${stats ? stats.size : 'NO STATS'})`);
+        // console.warn(`#   new CID (${path}): ${cid}`);
+        update('change', cid);
       });
       this.watcher.on('unlink', async (path) => {
-        // console.warn(`del ${path}`);
-        if (this.path2cid[path]) delete this.cid2path[this.path2cid[path]];
+        // console.warn(`# del ${path}`);
+        const cid = this.path2cid[path];
+        if (cid) delete this.cid2path[cid];
         delete this.path2cid[path];
-        update();
+        update('delete', cid);
       });
       this.watcher.on('ready', () => {
-        // console.warn(`ready!`);
-        this.eventing = true;
-        resolve(this.cid2path);
+        // console.warn(`# ready!`);
+        process.nextTick(() => {
+          this.eventing = true;
+          resolve(this.cid2path);
+        });
       });
       this.watcher.on('error', reject);
     });
