@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import mime from 'mime-types';
 import { CID } from 'multiformats/cid';
 import Watcher from './watcher.js';
+import { fromDataWithData } from './cid.js';
 
 
 // Manifest:
@@ -70,5 +71,14 @@ export default class Manifest extends EventEmitter {
       if (typeof r.src === 'string') r.src = CID.parse(r.src);
     });
     return m;
+  }
+  async tile () {
+    const m = this.manifest();
+    const [cid, tile] = await fromDataWithData(m);
+    return {
+      cid,
+      tile,
+      url: `web+tile://${cid}/`,
+    };
   }
 }
