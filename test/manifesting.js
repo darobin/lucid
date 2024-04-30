@@ -1,24 +1,28 @@
 
-import { equal, ok, deepEqual } from 'node:assert';
+import { equal, ok } from 'node:assert';
 import { cp, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import makeRel from '../lib/rel.js';
-import { setUpSource, tearDownSource } from './support/tile-source.js';
+import { setUpSource } from './support/tile-source.js';
 import Manifest from '../manifest.js';
 
 const rel = makeRel(import.meta.url);
 const fixtures = rel('./fixtures');
 let tmpDir;
+let m;
 let w;
-let initialData;
 
 before(async () => {
   const res = await setUpSource(fixtures);
   tmpDir = res.tmpDir;
   w = res.w;
-  initialData = res.initialData;
+  m = new Manifest(tmpDir);
+  await m.watch();
 });
-after(() => tearDownSource(w));
+after(() => {
+  m.stop();
+  w.stop();
+});
 describe('Manifest', () => {
   it('default metadata', () => {
     const def = new Manifest(tmpDir);
@@ -36,91 +40,65 @@ describe('Manifest', () => {
     equal(givMan.description, description, 'given description');
     giv.stop();
   });
-  // it('correctly processes initial directory', () => {
-  //   deepEqual(
-  //     initialData, 
-  //     {
-  //       bafkr4igtrzvbqw3wshqujdhvscbd4jfnglovn3hizefgc432gtlnj3twgq: "index.html",
-  //       bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu: "wtf.jpg",
-  //     },
-  //     'initial read correct'
-  //   );
-  // });
-  // it('processes adding a file', async function () {
-  //   this.timeout(5000);
-  //   const p = new Promise((resolve, reject) => {
-  //     w.once('update', (map, type, cid) => {
-  //       try {
-  //         equal(type, 'add', 'we see an addition');
-  //         equal(cid, 'bafkr4idla6d37zoddo4i4wvs5zkuxwvyuczpwjjna6xcx4uj7bpmy3276i', 'correct CID');
-  //         deepEqual(
-  //           map, 
-  //           {
-  //             bafkr4igtrzvbqw3wshqujdhvscbd4jfnglovn3hizefgc432gtlnj3twgq: "index.html",
-  //             bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu: "wtf.jpg",
-  //             bafkr4idla6d37zoddo4i4wvs5zkuxwvyuczpwjjna6xcx4uj7bpmy3276i: "poem.txt",
-  //           },
-  //           'map correct'
-  //         );
-  //         resolve();
-  //       }
-  //       catch (err) {
-  //         reject(err);
-  //       }
-  //     });
-  //   });
-  //   await cp(join(fixtures, 'poem.txt'), join(tmpDir, 'poem.txt'));
-  //   return p;
-  // });
-  // it('processes changing a file', async function () {
-  //   this.timeout(5000);
-  //   const p = new Promise((resolve, reject) => {
-  //     w.once('update', (map, type, cid) => {
-  //       try {
-  //         equal(type, 'change', 'we see a change');
-  //         equal(cid, 'bafkr4ib47dntyr4jhcgcbx3wknk7okpidiuikc6x4ulsvurlrzsgxpmjlm', 'correct CID');
-  //         deepEqual(
-  //           map, 
-  //           {
-  //             bafkr4ib47dntyr4jhcgcbx3wknk7okpidiuikc6x4ulsvurlrzsgxpmjlm: "index.html",
-  //             bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu: "wtf.jpg",
-  //             bafkr4idla6d37zoddo4i4wvs5zkuxwvyuczpwjjna6xcx4uj7bpmy3276i: "poem.txt",
-  //           },
-  //           'map correct'
-  //         );
-  //         resolve();
-  //       }
-  //       catch (err) {
-  //         reject(err);
-  //       }
-  //     });
-  //   });
-  //   await writeFile(join(tmpDir, 'index.html'), 'This file now intentionally left blank.');
-  //   return p;
-  // });
-  // it('processes deleting a file', async function () {
-  //   this.timeout(5000);
-  //   const p = new Promise((resolve, reject) => {
-  //     w.once('update', (map, type, cid) => {
-  //       try {
-  //         equal(type, 'delete', 'we see a deletion');
-  //         equal(cid, 'bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu', 'correct CID that was deleted');
-  //         deepEqual(
-  //           map, 
-  //           {
-  //             bafkr4ib47dntyr4jhcgcbx3wknk7okpidiuikc6x4ulsvurlrzsgxpmjlm: "index.html",
-  //             bafkr4idla6d37zoddo4i4wvs5zkuxwvyuczpwjjna6xcx4uj7bpmy3276i: "poem.txt",
-  //           },
-  //           'map correct'
-  //         );
-  //         resolve();
-  //       }
-  //       catch (err) {
-  //         reject(err);
-  //       }
-  //     });
-  //   });
-  //   await rm(join(tmpDir, 'wtf.jpg'));
-  //   return p;
-  // });
+  it('correctly processes initial directory', () => {
+    const { resources: data } = m.manifest();
+    equal(data['/index.html']?.src?.toString(), 'bafkr4igtrzvbqw3wshqujdhvscbd4jfnglovn3hizefgc432gtlnj3twgq', 'index CID');
+    equal(data['/index.html']?.mediaType, 'text/html', 'index media type');
+    equal(data['/']?.src?.toString(), 'bafkr4igtrzvbqw3wshqujdhvscbd4jfnglovn3hizefgc432gtlnj3twgq', 'root CID');
+    equal(data['/']?.mediaType, 'text/html', 'root media type');
+    equal(data['/wtf.jpg']?.src?.toString(), 'bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu', 'WTF CID');
+    equal(data['/wtf.jpg']?.mediaType, 'image/jpeg', 'WTF media type');
+  });
+  it('processes adding a file', async function () {
+    this.timeout(5000);
+    const p = new Promise((resolve, reject) => {
+      m.once('update', (man) => {
+        try {
+          equal(man?.resources?.['/poem.txt']?.src?.toString(), 'bafkr4idla6d37zoddo4i4wvs5zkuxwvyuczpwjjna6xcx4uj7bpmy3276i', 'correct CID');
+          equal(man?.resources?.['/poem.txt']?.mediaType, 'text/plain', 'correct media type');
+          resolve();
+        }
+        catch (err) {
+          reject(err);
+        }
+      });
+    });
+    await cp(join(fixtures, 'poem.txt'), join(tmpDir, 'poem.txt'));
+    return p;
+  });
+  it('processes changing a file', async function () {
+    this.timeout(5000);
+    const p = new Promise((resolve, reject) => {
+      m.once('update', (man) => {
+        try {
+          equal(man?.resources?.['/index.html']?.src?.toString(), 'bafkr4ib47dntyr4jhcgcbx3wknk7okpidiuikc6x4ulsvurlrzsgxpmjlm', 'updated CID');
+          equal(man?.resources?.['/index.html']?.mediaType, 'text/html', 'correct media type');
+          equal(man?.resources?.['/']?.src?.toString(), 'bafkr4ib47dntyr4jhcgcbx3wknk7okpidiuikc6x4ulsvurlrzsgxpmjlm', 'updated CID for root');
+          equal(man?.resources?.['/']?.mediaType, 'text/html', 'correct media type for root');
+          resolve();
+        }
+        catch (err) {
+          reject(err);
+        }
+      });
+    });
+    await writeFile(join(tmpDir, 'index.html'), 'This file now intentionally left blank.');
+    return p;
+  });
+  it('processes deleting a file', async function () {
+    this.timeout(5000);
+    const p = new Promise((resolve, reject) => {
+      m.once('update', (man) => {
+        try {
+          ok(!man.resources['/wtf.jpg'], 'removed file');
+          resolve();
+        }
+        catch (err) {
+          reject(err);
+        }
+      });
+    });
+    await rm(join(tmpDir, 'wtf.jpg'));
+    return p;
+  });
 });

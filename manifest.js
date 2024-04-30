@@ -33,9 +33,10 @@ export default class Manifest extends EventEmitter {
   }
   addToResourceMap (path, cid) {
     const mediaType = mime.lookup(join(this.path, path));
+    if (!/^\//.test(path)) path = `/${path}`;
     this.resources[path] = { src: cid, mediaType };
     // if the file is index.html at the root, we add a second / entry for that
-    if (path === 'index.html') this.resources['/'] = this.resources[path];
+    if (path === '/index.html') this.resources['/'] = Object.assign({}, this.resources[path]);
   }
   async generate () {
     this.map2manifest(await this.watcher.run());
@@ -46,12 +47,16 @@ export default class Manifest extends EventEmitter {
     this.map2manifest(await this.watcher.run());
     this.watcher.on('update', (map, type, cid, path) => {
       if (type === 'add' || type === 'change') this.addToResourceMap(path, cid);
-      else if (type === 'delete') delete this.resources[path];
+      else if (type === 'delete') {
+        if (!/^\//.test(path)) path = `/${path}`;
+        delete this.resources[path];
+      }
       else console.error(`Unknown change type ${type}`);
+      this.emit('update', this.manifest());
     });
   }
-  stop () {
-    this.watcher?.stop();
+  async stop () {
+    await this.watcher?.stop();
   }
   manifest () {
     const m = {
@@ -61,7 +66,9 @@ export default class Manifest extends EventEmitter {
       // icons: this.meta?.icons,
     };
     m.resources = Object.assign({}, this.resources);
-    Object.values(m.resources).forEach(r => r.src = CID.parse(r.src));
+    Object.values(m.resources).forEach(r => {
+      if (typeof r.src === 'string') r.src = CID.parse(r.src);
+    });
     return m;
   }
 }
