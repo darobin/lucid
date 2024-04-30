@@ -1,10 +1,9 @@
 
 import { equal, deepEqual } from 'node:assert';
-import { mkdtemp, cp, writeFile, rm } from 'node:fs/promises';
+import { cp, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import makeRel from '../lib/rel.js';
-import Watcher from "../watcher.js";
+import { setUpSource, tearDownSource } from './support/tile-source.js';
 
 const rel = makeRel(import.meta.url);
 const fixtures = rel('./fixtures');
@@ -13,16 +12,12 @@ let w;
 let initialData;
 
 before(async () => {
-  tmpDir = await mkdtemp(join(tmpdir(), 'lucid-'));
-  await Promise.all(['index.html', 'wtf.jpg'].map(f => cp(join(fixtures, f), join(tmpDir, f))));
-  // there's a lovely race condition with cp()
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  w = new Watcher(tmpDir);
-  initialData = await w.run();
+  const res = await setUpSource(fixtures);
+  tmpDir = res.tmpDir;
+  w = res.w;
+  initialData = res.initialData;
 });
-after(async () => {
-  w?.stop();
-});
+after(() => tearDownSource(w));
 describe('Watcher', () => {
   it('correctly processes initial directory', () => {
     deepEqual(

@@ -5,7 +5,20 @@ import mime from 'mime-types';
 import { CID } from 'multiformats/cid';
 import Watcher from './watcher.js';
 
-// XXX test me
+
+// Manifest:
+// {
+//   name
+//   description
+//   icons
+//   resources: {
+//     '/': {} // this one is a *copy* of the one for index.html
+//     '/path/to/something': {
+//       src: 'cid',
+//       mediaType: 'text/html',
+//     },
+//   },
+// }
 
 export default class Manifest extends EventEmitter {
   constructor (path, meta = {}) {
@@ -52,17 +65,3 @@ export default class Manifest extends EventEmitter {
     return m;
   }
 }
-
-// Manifest:
-// {
-//   name
-//   description
-//   icons
-//   resources: {
-//     '/': {} // this one is a *copy* of the one for index.html
-//     '/path/to/something': {
-//       src: 'cid',
-//       mediaType: 'text/html',
-//     },
-//   },
-// }
