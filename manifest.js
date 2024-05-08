@@ -45,8 +45,11 @@ export default class Manifest extends EventEmitter {
     return this.manifest();
   }
   async watch () {
+    console.warn(`Calling awaited watcher.run`);
     this.map2manifest(await this.watcher.run());
+    console.warn(`After resolution of watcher.run, adding event listener`);
     this.watcher.on('update', (map, type, cid, path) => {
+      console.warn(`••• update! ${path}`);
       if (type === 'add' || type === 'change') this.addToResourceMap(path, cid);
       else if (type === 'delete') {
         if (!/^\//.test(path)) path = `/${path}`;
@@ -62,7 +65,7 @@ export default class Manifest extends EventEmitter {
   manifest () {
     const m = {
       name: this.meta?.name || 'Unnamed Tile',
-      description: this.meta?.description,
+      description: this.meta?.description || null,
       // XXX to support icons, need to check that they are resources
       // icons: this.meta?.icons,
     };

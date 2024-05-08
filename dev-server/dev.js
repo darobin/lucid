@@ -8,14 +8,14 @@ let currentCID;
 document.addEventListener('hashchange', updateCurrentCID);
 function updateCurrentCID () {
   currentCID = (window.location.hash || '').replace('#', '');
-  updateSourceBar();
 }
 updateCurrentCID();
 
 const sse = new EventSource('/.well-known/lucid/events');
-sse.addEventListener('data', (ev) => {
+sse.addEventListener('new-cid', (ev) => {
   console.warn(`DATA`, ev.data);
   const { cid } = JSON.parse(ev.data);
+  updateSourceBar(cid);
   if (cid === currentCID) return;
   window.location.hash = `#${cid}`;
 });

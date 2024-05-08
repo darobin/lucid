@@ -32,6 +32,9 @@ export async function makeRouter (root, m) {
   return r;
 }
 
+// XXX ISSUES
+// - getting update events before we've parsed the full directory
+
 export async function devServer (root, options) {
   const app = express();
   const sendOptions = makeSendOptions(root);
@@ -48,9 +51,9 @@ export async function devServer (root, options) {
     next();
   });
 
-
   // SSE
   app.get('/.well-known/lucid/events', (req, res) => {
+    console.warn(`SSE SUB!`);
     res.writeHead(200, {
       connection: 'keep-alive',
       'cache-control': 'no-cache',
@@ -65,8 +68,12 @@ export async function devServer (root, options) {
   });
 
   function sendSSEUpdate (cid) {
+    console.warn(`• updating with ${cid}`);
     if (!ssePool.size) return;
-    Array.from(ssePool.values()).forEach(res => res.write(`data: ${JSON.stringify({ cid })}\n\n`));
+    Array.from(ssePool.values()).forEach(res => {
+      console.warn(`• sending…`);
+      res.write(`event: new-cid\ndata: ${JSON.stringify({ cid })}\n\n`);
+    });
   }
 
   // let's watch a manifest
@@ -75,17 +82,17 @@ export async function devServer (root, options) {
   const manifestUpdate = async (man) => {
     manifest = man;
     tile = await m.tile();
-    console.warn(`Load tile from http://localhost:${options.port}/.well-known/lucid/#${tile.cid}`);
+    console.warn(`Load tile from http://localhost:${options.port}/.well-known/lucid/#${tile.cid}`, manifest?.resources);
     sendSSEUpdate(tile.cid);
   };
   await manifestUpdate(m.manifest());
-  m.on('update', manifestUpdate);
+  m.on('update', manifestUpdate); // XXX I think this is updating before it's ready
 
   // subdomains, actually
   app.get('/', (req, res, next) => {
     const host = req.hostname;
     // redirect / to /.well-known/lucid/#${CID} (this assumes that the SW intercepts / always)
-    if (host === 'localhost') return res.redirect(`/.well-known/lucid/#${cid}`);
+    if (host === 'localhost') return res.redirect(`/.well-known/lucid/#${tile.cid}`);
     if (!/\w+\.ipfs\.localhost$/.test(host)) return next();
     const cid = host.replace(/\.ipfs\.localhost$/, '');
     if (tile.cid === cid) return res.type('application/web-tile').send(tile.tile);
