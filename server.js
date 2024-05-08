@@ -35,28 +35,57 @@ export async function makeRouter (root, m) {
 export async function devServer (root, options) {
   const app = express();
   const sendOptions = makeSendOptions(root);
+  let manifest;
+  let tile;
+  let ssePool = new Set();
 
   // Serve the UI from a .wk, that cannot appear in tiles (we could protect against that)
   app.use('/.well-known/lucid/', express.static(rel('dev-server')));
 
+  // we allow full path control
+  app.use((req, res, next) => {
+    res.setHeader('service-worker-allowed', '/');
+    next();
+  });
+
+
+  // SSE
+  app.get('/.well-known/lucid/events', (req, res) => {
+    res.writeHead(200, {
+      connection: 'keep-alive',
+      'cache-control': 'no-cache',
+      'content-type': 'text/event-stream',
+    });
+    ssePool.add(res);
+    if (tile?.cid) sendSSEUpdate(tile.cid);
+    res.on('close', () => {
+      ssePool.delete(res);
+      res.end();
+    });
+  });
+
+  function sendSSEUpdate (cid) {
+    if (!ssePool.size) return;
+    Array.from(ssePool.values()).forEach(res => res.write(`data: ${JSON.stringify({ cid })}\n\n`));
+  }
+
   // let's watch a manifest
-  let manifest;
-  let tile;
   const m = new Manifest(root);
   await m.watch();
-  manifest = m.manifest();
-  tile = await m.tile();
-  m.on('update', async (man) => {
+  const manifestUpdate = async (man) => {
     manifest = man;
     tile = await m.tile();
-    // XXX
-    // - print something
-    // - emit to the EventSource stream so the UI changes the source
-  });
+    console.warn(`Load tile from http://localhost:${options.port}/.well-known/lucid/#${tile.cid}`);
+    sendSSEUpdate(tile.cid);
+  };
+  await manifestUpdate(m.manifest());
+  m.on('update', manifestUpdate);
 
   // subdomains, actually
   app.get('/', (req, res, next) => {
     const host = req.hostname;
+    // redirect / to /.well-known/lucid/#${CID} (this assumes that the SW intercepts / always)
+    if (host === 'localhost') return res.redirect(`/.well-known/lucid/#${cid}`);
     if (!/\w+\.ipfs\.localhost$/.test(host)) return next();
     const cid = host.replace(/\.ipfs\.localhost$/, '');
     if (tile.cid === cid) return res.type('application/web-tile').send(tile.tile);
@@ -64,17 +93,6 @@ export async function devServer (root, options) {
     if (!r) return next();
     res.type(r[1].mediaType).sendFile(r[0], sendOptions);
   });
-
-  // - open viewer to /.well-known/lucid/#${CID}
-  // - if possible, redirect / to /.well-known/lucid/#${CID} (this assumes that the SW intercepts / always)
-  // - set Service-Worker-Allowed: /
-  // - serve SW from /.well-known/lucid/sw.js (it's just the dev-server dir I guess)
-  // - iframe loads / (after SW is instantiated)
-  // - SW gets data from ${CID}.ipfs.localhost (need to respond to host) by mapping from the host
-
-  // - event source
-  // - watch the dir
-  // - mount the router generator, and remount when there's a change
 
   app.listen(options.port, () => {
     console.warn(`Lucid serving tiles from '${root}' at http://localhost:${options.port}/.`);
@@ -88,10 +106,3 @@ function makeSendOptions (root) {
     immutable: true,
   };
 }
-
-// XXX
-// This supports:
-//  - A dev server that sends a UI showing the web+tile URL and updates it whenever
-//    it receives a change of manifest via an EventSource. It also configures a
-//    vhost to serve the tile along with the route to provide its content.
-//  - The UI also has a worker that can DTRT on the client side.
