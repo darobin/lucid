@@ -39,14 +39,14 @@ export async function devServer (root, options) {
   let tile;
   let ssePool = new Set();
 
-  // Serve the UI from a .wk, that cannot appear in tiles (we could protect against that)
-  app.use('/.well-known/lucid/', express.static(rel('dev-server')));
-
   // we allow full path control
   app.use((req, res, next) => {
     res.setHeader('service-worker-allowed', '/');
     next();
   });
+
+  // Serve the UI from a .wk, that cannot appear in tiles (we could protect against that)
+  app.use('/.well-known/lucid/', express.static(rel('dev-server')));
 
   // SSE
   app.get('/.well-known/lucid/events', (req, res) => {
