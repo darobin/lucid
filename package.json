@@ -5,7 +5,8 @@
   "description": "LUCID — Lightweight Universal CIDs",
   "author": "Robin Berjon <robin@berjon.com>",
   "scripts": {
-    "test": "mocha"
+    "test": "mocha",
+    "build-ipld-decode": "esbuild dev-server/ipld-decode.src.js --bundle --outfile=dev-server/ipld-decode.js --format=esm"
   },
   "bin": {
     "lucid-dev-server": "lucid-dev-server.js"
@@ -29,6 +30,7 @@
     "rules": {}
   },
   "devDependencies": {
+    "esbuild": "^0.21.1",
     "eslint": "^8.26.0",
     "mocha": "^10.4.0"
   },

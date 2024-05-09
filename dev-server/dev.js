@@ -4,6 +4,8 @@ let curIFrame;
 
 const srcEl = document.getElementById('src');
 const renderEl = document.getElementById('render');
+const updateBut = document.getElementById('update');
+
 function updateSourceBar (cid) {
   srcEl.textContent = `web+tile://${cid}/`;
 }
@@ -32,11 +34,25 @@ async function loadTile (cid) {
   curSWReg = await navigator.serviceWorker.register('sw.js', { scope: '/' });
   await navigator.serviceWorker.ready;
   curSWReg.active.postMessage({ cid });
-  if (curIFrame) curIFrame.remove();
-  curIFrame = document.createElement('iframe');
-  // arbitrarily, the dimensions of a Galaxy Note S20
-  curIFrame.setAttribute('width', '412');
-  curIFrame.setAttribute('height', '883');
-  renderEl.append(curIFrame);
-  curIFrame.src = '/';
+  console.warn(`waiting for message…`);
 }
+
+navigator.serviceWorker.onmessage = (ev) => {
+  console.warn(`Got message`, ev);
+  if (ev.data?.state === 'ready') {
+    if (curIFrame) curIFrame.remove();
+    curIFrame = document.createElement('iframe');
+    // arbitrarily, the dimensions of a Galaxy Note S20
+    curIFrame.setAttribute('width', '412');
+    curIFrame.setAttribute('height', '883');
+    renderEl.append(curIFrame);
+    curIFrame.src = '/';
+    // const r = await fetch('http://bafkr4igtrzvbqw3wshqujdhvscbd4jfnglovn3hizefgc432gtlnj3twgq.ipfs.localhost:3210/');
+    // console.warn(`res`, r);
+  }
+};
+
+updateBut.addEventListener('click', async () => {
+  if (curSWReg) await curSWReg.update();
+  window.location.reload();
+});

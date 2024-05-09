@@ -1,4 +1,5 @@
 
+import { Buffer } from 'node:buffer';
 import express, { Router } from 'express';
 import Manifest from "./manifest.js";
 import makeRel from './lib/rel.js';
@@ -41,6 +42,7 @@ export async function devServer (root, options) {
 
   // we allow full path control
   app.use((req, res, next) => {
+    res.setHeader('access-control-allow-origin', '*');
     res.setHeader('service-worker-allowed', '/');
     next();
   });
@@ -80,6 +82,7 @@ export async function devServer (root, options) {
     manifest = man;
     tile = await m.tile();
     console.warn(`[🥃] Load tile from http://localhost:${options.port}/.well-known/lucid/#${tile.cid}`, Object.keys(manifest?.resources || []));
+    console.warn(`[🥃] CID for index: ${manifest.resources['/index.html'].src}`);
     sendSSEUpdate(tile.cid);
   };
   await manifestUpdate(m.manifest());
@@ -89,11 +92,14 @@ export async function devServer (root, options) {
   app.get('/', (req, res, next) => {
     const host = req.hostname;
     // redirect / to /.well-known/lucid/#${CID} (this assumes that the SW intercepts / always)
-    if (host === 'localhost') return res.redirect(`/.well-known/lucid/#${tile.cid}`);
+    // if (host === 'localhost') return res.redirect(`/.well-known/lucid/#${tile.cid}`);
+    if (host === 'localhost') return res.status(400).send('This should not load'); // XXX sometimes the Worker isn't called
+    // XXX for the above, detect if it's embedded in the iframe or top level, reject if in iframe
     if (!/\w+\.ipfs\.localhost$/.test(host)) return next();
+    console.warn(`Serving ${host}`);
     const cid = host.replace(/\.ipfs\.localhost$/, '');
-    if (tile.cid === cid) return res.type('application/web-tile').send(tile.tile);
-    const r = Object.entries(manifest.resources).find(([, { src }]) => src === cid);
+    if (tile.cid === cid) return res.type('application/web-tile').send(Buffer.from(tile.tile));
+    const r = Object.entries(manifest.resources).find(([, { src }]) => src?.toString() === cid);
     if (!r) return next();
     res.type(r[1].mediaType).sendFile(r[0], sendOptions);
   });
