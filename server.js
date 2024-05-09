@@ -32,9 +32,6 @@ export async function makeRouter (root, m) {
   return r;
 }
 
-// XXX ISSUES
-// - getting update events before we've parsed the full directory
-
 export async function devServer (root, options) {
   const app = express();
   const sendOptions = makeSendOptions(root);
@@ -53,7 +50,7 @@ export async function devServer (root, options) {
 
   // SSE
   app.get('/.well-known/lucid/events', (req, res) => {
-    console.warn(`SSE SUB!`);
+    // console.warn(`[🥃] SSE SUB!`);
     res.writeHead(200, {
       connection: 'keep-alive',
       'cache-control': 'no-cache',
@@ -68,10 +65,10 @@ export async function devServer (root, options) {
   });
 
   function sendSSEUpdate (cid) {
-    console.warn(`• updating with ${cid}`);
+    // console.warn(`[🥃] • updating with ${cid}`);
     if (!ssePool.size) return;
     Array.from(ssePool.values()).forEach(res => {
-      console.warn(`• sending…`);
+      // console.warn(`[🥃] • sending…`);
       res.write(`event: new-cid\ndata: ${JSON.stringify({ cid })}\n\n`);
     });
   }
@@ -82,7 +79,7 @@ export async function devServer (root, options) {
   const manifestUpdate = async (man) => {
     manifest = man;
     tile = await m.tile();
-    console.warn(`Load tile from http://localhost:${options.port}/.well-known/lucid/#${tile.cid}`, manifest?.resources);
+    console.warn(`[🥃] Load tile from http://localhost:${options.port}/.well-known/lucid/#${tile.cid}`, Object.keys(manifest?.resources || []));
     sendSSEUpdate(tile.cid);
   };
   await manifestUpdate(m.manifest());
