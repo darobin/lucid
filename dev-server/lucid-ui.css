@@ -50,6 +50,8 @@ main {
 }
 #meta {
   grid-area: meta;
+  display: flex;
+  justify-content: right;
 }
 #render {
   grid-area: render;
@@ -58,4 +60,64 @@ main {
   width: 100%;
   height: 100%;
   border: 1px solid #000;
+}
+#ui {
+  text-align: left;
+  border: 1px solid var(--bright-bg);
+  padding: 1rem;
+  margin-right: 1rem;
+  width: fit-content;
+}
+#bar {
+  display: flex;
+}
+#src::before {
+  content: "※";
+  font-size: 2.2rem;
+  line-height: 1;
+  color: #2c9b42;
+  margin-right: 0.4rem;
+}
+#src {
+  display: flex;
+  font-family: 'Courier New', Courier, monospace;
+  border: 1px solid #666;
+  padding: 0.2rem 0.4rem;
+  flex-grow: 1;
+  margin-right: 0.4rem;
+}
+#bar > button {
+  font-size: 2rem;
+  display: flex;
+  background: none;
+  border: none;
+  padding: 0 0.4rem;
+  cursor: pointer;
+}
+#bar > button:hover {
+  color: #2c9b42;
+}
+#ui > hr {
+  border: none;
+  border-top: 1px solid var(--bright-bg);
+  background: none;
+}
+#tile {
+  display: grid;
+  grid-template-areas: 
+    "icon name"
+    "icon desc"
+  ;
+  grid-template-columns: calc(48px + 0.4rem) auto;
+}
+#name {
+  font-weight: bold;
+  padding-top: 0.4rem;
+  grid-area: name;
+}
+#icon {
+  grid-area: icon;
+}
+#desc {
+  grid-area: desc;
 }

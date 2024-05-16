@@ -3,7 +3,9 @@ let curSWReg;
 let curIFrame;
 
 const srcEl = document.getElementById('src');
-const dumpEl = document.getElementById('dump');
+const iconEl = document.getElementById('icon');
+const nameEl = document.getElementById('name');
+const descEl = document.getElementById('desc');
 const renderEl = document.getElementById('render');
 const updateBut = document.getElementById('update');
 
@@ -58,7 +60,16 @@ navigator.serviceWorker.onmessage = (ev) => {
     renderEl.append(curIFrame);
     curIFrame.src = '/';
     curIFrame.setAttribute('frameborder', '0')
-    dumpEl.textContent = JSON.stringify(ev.data.manifest || 'nope', null, 2);
+    iconEl.textContent = null;
+    if (ev.data.manifest?.icons?.[0]?.src) {
+      const img = document.createElement('img');
+      img.setAttribute('width', '48');
+      img.setAttribute('height', '48');
+      img.setAttribute('src', ev.data.manifest.icons[0].src);
+      iconEl.append(img);
+    }
+    nameEl.textContent = ev.data.manifest?.name;
+    descEl.textContent = ev.data.manifest?.description;
   }
 };
 

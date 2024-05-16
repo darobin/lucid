@@ -3,7 +3,7 @@
   "description": "Legit the most beautiful kitten known to humankind.",
   "icons": [
     {
-      "src": "cat.svg"
+      "src": "/cat.svg"
     }
   ]
 }

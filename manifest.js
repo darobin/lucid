@@ -73,7 +73,7 @@ export default class Manifest extends EventEmitter {
       name: this.meta?.name || 'Unnamed Tile',
       description: this.meta?.description || null,
       // XXX to support icons, need to check that they are resources
-      // icons: this.meta?.icons,
+      icons: this.meta?.icons,
     };
     m.resources = Object.assign({}, this.resources);
     Object.values(m.resources).forEach(r => {
