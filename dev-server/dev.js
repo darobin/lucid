@@ -12,9 +12,10 @@ function updateSourceBar (cid) {
 }
 
 let currentCID; 
-document.addEventListener('hashchange', updateCurrentCID);
+window.addEventListener('hashchange', updateCurrentCID);
 function updateCurrentCID () {
   currentCID = (window.location.hash || '').replace('#', '');
+  console.warn(`Updating CID to ${currentCID}`);
   loadTile(currentCID);
 }
 updateCurrentCID();
@@ -28,20 +29,29 @@ sse.addEventListener('new-cid', (ev) => {
 });
 
 async function loadTile (cid) {
-  if (curSWReg) {
-    console.warn(`Unloading previous tile…`);
-    await curSWReg.unregister();
+  // console.warn(`Load tile ${cid}`);
+  // if (curSWReg) {
+  //   console.warn(`Unloading previous tile…`);
+  //   await curSWReg.unregister();
+  //   console.warn(`registration installing? ${!!curSWReg.installing}, waiting? ${!!curSWReg.waiting}`);
+  //   console.warn(navigator.serviceWorker);
+  // }
+  if (!curSWReg) {
+    curSWReg = await navigator.serviceWorker.register('sw.js', { scope: '/' });
+    await navigator.serviceWorker.ready;
   }
-  curSWReg = await navigator.serviceWorker.register('sw.js', { scope: '/' });
-  await navigator.serviceWorker.ready;
   curSWReg.active.postMessage({ cid });
-  console.warn(`waiting for message…`);
+  console.warn(`waiting for service worker to signal load ${cid}`);
 }
+
+navigator.serviceWorker.addEventListener("controllerchange", () => {
+  console.warn("The controller of current browsing context has changed.");
+});
 
 // XXX
 // - use this to get a new manifest, and show name, desc, icons under the bar
 navigator.serviceWorker.onmessage = (ev) => {
-  console.warn(`Got message`, ev);
+  console.warn(`SW loaded`, ev.data);
   if (ev.data?.state === 'ready') {
     if (curIFrame) curIFrame.remove();
     curIFrame = document.createElement('iframe');

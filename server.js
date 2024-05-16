@@ -82,7 +82,7 @@ export async function devServer (root, options) {
     manifest = man;
     tile = await m.tile();
     console.warn(`[🥃] Load tile from http://localhost:${options.port}/.well-known/lucid/#${tile.cid}`, Object.keys(manifest?.resources || []));
-    console.warn(`[🥃] CID for index: ${manifest.resources['/index.html'].src}`);
+    // console.warn(`[🥃] CID for index: ${manifest.resources['/index.html'].src}`);
     sendSSEUpdate(tile.cid);
   };
   await manifestUpdate(m.manifest());
