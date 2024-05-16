@@ -86,14 +86,14 @@ export async function devServer (root, options) {
     sendSSEUpdate(tile.cid);
   };
   await manifestUpdate(m.manifest());
-  m.on('update', manifestUpdate); // XXX I think this is updating before it's ready
+  m.on('update', manifestUpdate);
 
   // subdomains, actually
   app.get('/', (req, res, next) => {
     const host = req.hostname;
     // redirect / to /.well-known/lucid/#${CID} (this assumes that the SW intercepts / always)
-    // if (host === 'localhost') return res.redirect(`/.well-known/lucid/#${tile.cid}`);
-    if (host === 'localhost') return res.status(400).send('This should not load'); // XXX sometimes the Worker isn't called
+    if (host === 'localhost') return res.redirect(`/.well-known/lucid/#${tile.cid}`);
+    // if (host === 'localhost') return res.status(400).send('This should not load'); // XXX sometimes the Worker isn't called
     // XXX for the above, detect if it's embedded in the iframe or top level, reject if in iframe
     if (!/\w+\.ipfs\.localhost$/.test(host)) return next();
     console.warn(`Serving ${host}`);

@@ -49,8 +49,6 @@ navigator.serviceWorker.onmessage = (ev) => {
     curIFrame.setAttribute('height', '883');
     renderEl.append(curIFrame);
     curIFrame.src = '/';
-    // const r = await fetch('http://bafkr4igtrzvbqw3wshqujdhvscbd4jfnglovn3hizefgc432gtlnj3twgq.ipfs.localhost:3210/');
-    // console.warn(`res`, r);
   }
 };
 
