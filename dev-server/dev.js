@@ -37,6 +37,8 @@ async function loadTile (cid) {
   console.warn(`waiting for message…`);
 }
 
+// XXX
+// - use this to get a new manifest, and show name, desc, icons under the bar
 navigator.serviceWorker.onmessage = (ev) => {
   console.warn(`Got message`, ev);
   if (ev.data?.state === 'ready') {
