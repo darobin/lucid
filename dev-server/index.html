@@ -5,15 +5,18 @@
   <meta name="viewport" content="width=device-width">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%220.9em%22 font-size=%22105%22>🛸</text></svg>">
   <title>Lucid Web Tile Dev Server</title>
+  <link rel="stylesheet" href="lucid-ui.css">
 </head>
 <body>
-  <p>
-    Serving from:
-  </p>
-  <pre id="src">Unknown…</pre>
-  <pre id="dump"></pre>
-  <button id="update">Force Update</button>
-  <div id="render"></div>
+  <h1>Lucid Tiles Development Server</h1>
+  <main>
+    <div id="meta">
+      <pre id="src">Unknown…</pre>
+      <pre id="dump"></pre>
+      <button id="update">Force Update</button>
+    </div>
+    <div id="render"></div>
+  </main>
   <script src="dev.js"></script>
 </body>
 </html>

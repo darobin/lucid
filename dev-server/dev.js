@@ -55,11 +55,9 @@ navigator.serviceWorker.onmessage = (ev) => {
   if (ev.data?.state === 'ready') {
     if (curIFrame) curIFrame.remove();
     curIFrame = document.createElement('iframe');
-    // arbitrarily, the dimensions of a Galaxy Note S20
-    curIFrame.setAttribute('width', '412');
-    curIFrame.setAttribute('height', '883');
     renderEl.append(curIFrame);
     curIFrame.src = '/';
+    curIFrame.setAttribute('frameborder', '0')
     dumpEl.textContent = JSON.stringify(ev.data.manifest || 'nope', null, 2);
   }
 };

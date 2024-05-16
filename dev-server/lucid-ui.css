@@ -1,0 +1,61 @@
+
+@font-face {
+  font-family: "Mulish";
+  src: url("Mulish-VariableFont_wght.ttf");
+  font-style: normal;
+}
+
+:root {
+  --bright-bg: #b60078;
+  --dim-bg: #54177d;
+  --pretty-bg: linear-gradient(to right, var(--bright-bg), var(--dim-bg));
+  --bright-fg: #f9ff2a;
+  --title-family: "Mulish";
+  --body-family: "Mulish";
+}
+
+*, *::after, *::before {
+  box-sizing: border-box;
+}
+
+html, body {
+  font-size: 16px;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--body-family);
+  font-size: 1.25rem;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+h1 {
+  margin: 0 0 1rem 0;
+  padding: 0 1rem;
+  background: var(--dim-bg);
+  color: #fff;
+  font-family: var(--title-family);
+  font-weight: normal;
+  font-size: 1rem;
+}
+
+main {
+  padding: 0 1rem;
+  display: grid;
+  grid-template-areas: "meta render";
+  grid-template-columns: 1fr 1fr;
+  height: calc(100vh - 4rem);
+}
+#meta {
+  grid-area: meta;
+}
+#render {
+  grid-area: render;
+}
+#render iframe {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #000;
+}
