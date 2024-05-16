@@ -10,7 +10,7 @@ self.onmessage = async (ev) => {
   curCID = ev.data?.cid;
   loading = fetchManifest(curCID);
   await loading;
-  ev.source.postMessage({ state: 'ready' /*, manifest: curManifest */ });
+  ev.source.postMessage({ state: 'ready', manifest: curManifest });
 };
 
 self.addEventListener('fetch', async (ev) => {

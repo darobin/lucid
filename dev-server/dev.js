@@ -3,6 +3,7 @@ let curSWReg;
 let curIFrame;
 
 const srcEl = document.getElementById('src');
+const dumpEl = document.getElementById('dump');
 const renderEl = document.getElementById('render');
 const updateBut = document.getElementById('update');
 
@@ -49,6 +50,7 @@ navigator.serviceWorker.onmessage = (ev) => {
     curIFrame.setAttribute('height', '883');
     renderEl.append(curIFrame);
     curIFrame.src = '/';
+    dumpEl.textContent = JSON.stringify(ev.data.manifest || 'nope', null, 2);
   }
 };
 

@@ -1,6 +1,7 @@
 
 import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import mime from 'mime-types';
 import { CID } from 'multiformats/cid';
 import Watcher from './watcher.js';
@@ -33,8 +34,13 @@ export default class Manifest extends EventEmitter {
     Object.entries(map).forEach(([cid, path]) => this.addToResourceMap(path, cid));
   }
   addToResourceMap (path, cid) {
-    const mediaType = mime.lookup(join(this.path, path));
+    const fullPath = join(this.path, path);
+    const mediaType = mime.lookup(fullPath);
     if (!/^\//.test(path)) path = `/${path}`;
+    if (path === '/manifest.json') {
+      this.meta = JSON.parse(readFileSync(fullPath));
+      return;
+    }
     this.resources[path] = { src: cid, mediaType };
     // if the file is index.html at the root, we add a second / entry for that
     if (path === '/index.html') this.resources['/'] = Object.assign({}, this.resources[path]);
