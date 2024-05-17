@@ -1,8 +1,8 @@
 
 ## Overall
 
-- [ ] document project as having more than just simpler CIDs
-- [ ] document Tiles/DevServer
+- [x] document project as having more than just simpler CIDs
+- [ ] document Tiles/DevServer and the APIs properly
 
 ## Tiles
 
