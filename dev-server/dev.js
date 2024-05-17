@@ -59,7 +59,14 @@ navigator.serviceWorker.onmessage = (ev) => {
     curIFrame = document.createElement('iframe');
     renderEl.append(curIFrame);
     curIFrame.src = '/';
-    curIFrame.setAttribute('frameborder', '0')
+    curIFrame.setAttribute('frameborder', '0'); // oh yeah
+    curIFrame.setAttribute('csp', [
+      `default-src 'self'`,
+      `style-src 'self' 'unsafe-inline'`,
+      `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';`,
+      `img-src 'self' blob: data:;`,
+      `media-src 'self' blob: data:;`,
+    ].join(' '));
     iconEl.textContent = null;
     if (ev.data.manifest?.icons?.[0]?.src) {
       const img = document.createElement('img');

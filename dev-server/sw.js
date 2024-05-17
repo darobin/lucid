@@ -16,14 +16,32 @@ self.onmessage = async (ev) => {
 self.addEventListener('fetch', async (ev) => {
   const url = new URL(ev.request.url);
   if (/^\/\.well-known\/lucid\b/.test(url.pathname)) return;
-  if (!curCID) return ev.respondWith(new Response('No CID available yet.', { status: 200, headers: { 'content-type': 'text/plain' } }));
+  if (!curCID) return ev.respondWith(new Response('No CID available yet.', response()));
   await loading;
-  if (!curManifest) return ev.respondWith(new Response(`Could not load tile manifest for CID ${curCID}`, { status: 404, headers: { 'content-type': 'text/plain' } }));
+  if (!curManifest) return ev.respondWith(new Response(`Could not load tile manifest for CID ${curCID}`, response(404)));
   const res = curManifest.resources?.[url.pathname];
-  if (!res) return ev.respondWith(new Response(`Not found: ${url.pathname.replace(/</g, '&gt;')}`, { status: 404, headers: { 'content-type': 'text/plain' } }));
+  if (!res) return ev.respondWith(new Response(`Not found: ${url.pathname.replace(/</g, '&gt;')}`, response(404)));
   // Here we have to be careful not to have a nested await (of a fetch at least).
-  ev.respondWith(fetch(cidToHTTP(res.src)), { status: 200, headers: { 'content-type': res.mediaType } });
+  ev.respondWith(fetch(cidToHTTP(res.src)), response(200, res.mediaType));
 });
+
+function response (status = 200, mediaType = 'text/plain', headers = {}) {
+  return {
+    status,
+    headers: {
+      ...headers,
+      'content-type': mediaType,
+      // we have this on the iframe instead, for now
+      // 'content-security-policy': [
+      //   `default-src 'self'`,
+      //   `style-src 'self' 'unsafe-inline'`,
+      //   `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval';`,
+      //   `img-src 'self' blob: data:;`,
+      //   `media-src 'self' blob: data:;`,
+      // ].join(' '),
+    },
+  };
+}
 
 function cidToHTTP (cid) {
   return `http://${cid}.ipfs.${self.location.host}/`;

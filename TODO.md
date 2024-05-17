@@ -6,8 +6,8 @@
 
 ## Tiles
 
-- [ ] add CSP to SW
-  - [ ] test CSP
+- [x] add CSP to SW
+  - [x] test CSP
 - [x] surface manifest metadata to viewer
   - [x] include icons support
 - [x] test that updating content moves the frontend
