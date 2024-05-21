@@ -2,7 +2,7 @@
 ## Overall
 
 - [x] document project as having more than just simpler CIDs
-- [ ] document Tiles/DevServer and the APIs properly
+- [ ] document Tiles/DevServer and their APIs properly
 
 ## Tiles
 
@@ -24,7 +24,7 @@
 
 - [x] Finish pushing config to Caddy
   - [x] Test it
-- [ ] Document
+- [x] Document
 - [ ] Add a watch option that replaces the configuration whenever there's a change
 - [ ] Support for more than one dir per server (use distinct @id prefixes)
 - [ ] Add option to stop serving (just deletes)
