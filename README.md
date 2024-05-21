@@ -94,3 +94,40 @@ keep updating the LUCID that it is pointing to as the root of the tile and updat
 (Note: Brave blocks some of this, for non-obvious reasons which I have yet to debug.)
 
 ![A screenshot showing what is described above](./screenshot.jpg)
+
+## Caddify
+
+[Caddy](https://caddyserver.com/) is a very cool server, that also happens to support a very
+flexible [dynamic configuration API ](https://caddyserver.com/docs/api). What this command 
+does is that, when pointed at a directory, it automatically configures a running Caddy instance
+to serve the content of that directory via gateway endpoints.
+
+The command is pretty simple:
+
+```
+Usage: caddify [options] <path>
+
+Dynamically configure a Caddy server to serve IPFS
+
+Arguments:
+  path                   path to the directory to serve
+
+Options:
+  -V, --version          output the version number
+  -e, --endpoint <url>   the Caddy endpoint for its configuration API (default: "http://localhost:2019/")
+  -d, --domain <domain>  the domain under which to serve IPFS (default: "localhost")
+  -p, --port <number>    the port from which to serve IPFS (default: 443)
+  -o, --out <path>       path to save the config to instead of posting it
+  -q, --quiet            shush (default: false)
+  -h, --help             display help for command
+```
+
+Running it to configure and serve from the local Caddy:
+
+```
+[lucid 15:12 (main)] $ ./caddify.js demos/beautiful-cat/
+Configuration updated:
+- https://bafkr4igra3bh6uuhmtpwiymbipaodx3lxwupn3absumn6do234xupooice.ipfs.localhost/ ➯ /index.html
+- https://bafkr4ickhymp67xqfakp4qysyep5hgwmul5lucymb7ttxfbaqkbuap355i.ipfs.localhost/ ➯ /cat.svg
+- https://bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu.ipfs.localhost/ ➯ /wtf.jpg
+```

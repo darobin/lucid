@@ -9,7 +9,8 @@
     "build-ipld-decode": "esbuild dev-server/ipld-decode.src.js --bundle --outfile=dev-server/ipld-decode.js --format=esm"
   },
   "bin": {
-    "lucid-dev-server": "lucid-dev-server.js"
+    "lucid-dev-server": "lucid-dev-server.js",
+    "caddify": "caddify.js"
   },
   "repository": {
     "type": "git",
