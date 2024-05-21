@@ -29,3 +29,4 @@
 - [ ] Support for more than one dir per server (use distinct @id prefixes)
 - [ ] Add option to stop serving (just deletes)
 - [ ] Make it announce itself, e.g. on IPNI
+- [ ] A separate process that can be reverse proxied from *.ipfs.domain would be neat too
