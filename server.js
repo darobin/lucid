@@ -109,7 +109,7 @@ export async function devServer (root, options) {
   });
 }
 
-function makeSendOptions (root) {
+export function makeSendOptions (root) {
   return {
     root,
     maxAge: 10 * 365 * 24 * 60 * 60 * 1000,

@@ -19,6 +19,7 @@
 - [ ] Support range requests
 - [ ] Make it work in Nostr?
 - [ ] Make a little Express middleware that can work to ship to your own site
+- [ ] Would it make sense to have a tile gateway? bafy….tile.example.net
 
 ## Caddify
 
@@ -30,3 +31,19 @@
 - [ ] Add option to stop serving (just deletes)
 - [ ] Make it announce itself, e.g. on IPNI
 - [ ] A separate process that can be reverse proxied from *.ipfs.domain would be neat too
+
+## Nostrify — IPFS
+
+- [ ] A basic Nostr server that supports the minimum protocol and can expose events usefully
+- [ ] Support for BINARY in the protocol
+- [ ] A special event to provide BINARY as IPFS
+- [ ] Expose the IPFS from binary over an HTTP gateway
+- [ ] Mimic IPNI over Nostr? Or register with IPNI?
+- [ ] Tinker with a client that will upload this way
+- [ ] add ipfs/lucid to NIP-94
+- [ ] add a field to NIP-96 to indicate that the server produces URLs that are IPFS-gateway compatible
+
+## Nostrify — Tiles
+
+- [ ] Upload test tile to the augury server
+- [ ] Tinker with a client that will render tiles (size rules too?)
