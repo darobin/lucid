@@ -51,7 +51,7 @@ export default class InterplanetaryNostrum {
         const event = match.snapshot.val();
         delete event.lucid__indexedTags;
         channel.send(['EVENT', sid, event]);
-      });
+      }).get();
     });
     this.subscriptions.set(`${channel.id}${TAG_SEP}${sid}`, { channel, queries });
   }
