@@ -28,12 +28,12 @@ before(async () => {
   store = await mkdtemp(join(tmpdir(), 'lucid-'));
   relay = new InterplanetaryNostrum({ port, store, posters: [pk] });
   await relay.run();
-  console.warn(`Running…`);
   client = await Relay.connect(`ws://localhost:${port}`);
-  console.warn(`End of before`);
 });
-after(async () => {
-  await relay.stop();
+after(async function () {
+  this.timeout(100 * 1000)
+  console.warn('aftering');
+  return relay.stop(true);
 });
 describe('Nostr Basics', () => {
   it('relay is running', (done) => {

@@ -58,7 +58,7 @@ export default class InterplanetaryNostrum {
   removeSubscription (sid, channel) {
     if (!this.running) throw new Error(`Cannot remove subscription while not running.`);
     const { queries } = this.subscriptions.get(`${channel.id}${TAG_SEP}${sid}`);
-    queries.forEach(q => q.removeAllListeners('add'));
+    queries.forEach(q => q.off('add'));
   }
   removeAllSubscriptions (channel) {
     [...this.subscriptions.keys()]
@@ -90,21 +90,21 @@ export default class InterplanetaryNostrum {
   }
   async run () {
     this.running = true;
-    this.db = new AceBase('nostr', { storage: { path: this.store }, logLevel: 'warn' });
+    this.db = new AceBase('nostr', { storage: { path: this.store }, logLevel: 'error' });
     await this.db.ready();
     await Promise.all(
       ['pubkey', 'kind', 'created_at', ].map(k => this.db.indexes.create('events', k))
     );
     await this.db.indexes.create('events', 'lucid__indexedTags', { type: 'array' });
-    const server = express();
+    const app = express();
     const api_url = '/api/nip96';
-    server.use(fileUpload({
+    app.use(fileUpload({
       abortOnLimit: true,
       useTempFiles: true,
       tempFileDir: join(this.store, 'tmp'),
     }));
     // subdomains first
-    server.get('/', async (req, res, next) => {
+    app.get('/', async (req, res, next) => {
       const host = req.hostname;
       if (!/\w+\.ipfs\./.test(host)) return next();
       const cid = host.replace(/\.ipfs\..+/, '');
@@ -113,10 +113,10 @@ export default class InterplanetaryNostrum {
       const { content_type: mediaType } = meta.val();
       res.type(mediaType).sendFile(join(this.store, cid), makeSendOptions(this.store));
     });
-    server.get('/.well-known/nostr/nip96.json', (req, res) => {
+    app.get('/.well-known/nostr/nip96.json', (req, res) => {
       res.send({ api_url });
     });
-    server.post(api_url, async (req, res) => {
+    app.post(api_url, async (req, res) => {
       let pubkey;
       try {
         // NOTE: not sure if fileUpload() causes req.body to be processed or not
@@ -156,11 +156,11 @@ export default class InterplanetaryNostrum {
       });
     });
     // For compatibility with nip96 that isn't very flexible, we redirect to the actually useful URL
-    server.get(`${api_url}/:cid`, (req, res) => {
+    app.get(`${api_url}/:cid`, (req, res) => {
       const cid = req.params.cid.replace(/\.\w+$/, ''); // remove extension if there
       res.redirect(308, cidSubdomain(req, cid));
     });
-    server.delete(`${api_url}/:cid`, async (req, res) => {
+    app.delete(`${api_url}/:cid`, async (req, res) => {
       const cid = req.params.cid.replace(/\.\w+$/, ''); // remove extension if there
       let pubkey;
       try {
@@ -194,8 +194,8 @@ export default class InterplanetaryNostrum {
         message: 'Resource deleted',
       });
     });
-    this.http = server.listen(this.port);
-    this.wss = new WebSocketServer({ server });
+    this.http = app.listen(this.port);
+    this.wss = new WebSocketServer({ server: this.http, clientTracking: true });
     this.wss.on('connection', (s) => {
       const nr = new RelayInstance(s, this);
       s.on('message', async (msg) => await nr.message(msg));
@@ -203,13 +203,23 @@ export default class InterplanetaryNostrum {
       s.on('error', err => console.warn(`Web socket error`, err));
     });
   }
-  async stop () {
-    if (this.db) await this.db.close();
-    if (this.http) this.http.close();
-    return new Promise((resolve) => {
-      if (!this.wss) return resolve();
-      this.wss.close(resolve);
-    });
+  async stop (force) {
+    return Promise.all([
+      this.db ? this.db.close() : Promise.resolve(),
+      this.http
+        ? new Promise((resolve) => {
+            this.http.close(resolve);
+            // yes, it's normal that this is called *after*
+            if (force) this.http.closeAllConnections();
+          })
+        : Promise.resolve(),
+      this.wss
+        ? new Promise((resolve) => {
+            this.wss.close(resolve);
+            if (force) [...this.wss.clients].forEach(c => c.terminate());
+          })
+        : Promise.resolve(),
+    ]);
   }
 }
 
