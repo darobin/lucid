@@ -194,7 +194,7 @@ export default class InterplanetaryNostrum {
         message: 'Resource deleted',
       });
     });
-    server.listen(this.port);
+    this.http = server.listen(this.port);
     this.wss = new WebSocketServer({ server });
     this.wss.on('connection', (s) => {
       const nr = new RelayInstance(s, this);
@@ -204,6 +204,8 @@ export default class InterplanetaryNostrum {
     });
   }
   async stop () {
+    if (this.db) await this.db.close();
+    if (this.http) this.http.close();
     return new Promise((resolve) => {
       if (!this.wss) return resolve();
       this.wss.close(resolve);
