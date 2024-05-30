@@ -35,9 +35,12 @@
 ## Nostrify — IPFS
 
 - [ ] A basic Nostr server that supports the minimum protocol and can expose events usefully
-- [ ] Support for BINARY in the protocol
-- [ ] A special event to provide BINARY as IPFS
-- [ ] Expose the IPFS from binary over an HTTP gateway
+  - [x] finish onREQ
+  - [ ] write actual tests
+  - [ ] integrate into augury
+  - [x] add a configuration that has allowlisting of pubkeys
+- [x] A special way to provide content for IPFS
+- [x] Expose the IPFS over an HTTP gateway
 - [ ] Mimic IPNI over Nostr? Or register with IPNI?
 - [ ] Tinker with a client that will upload this way
 - [ ] add ipfs/lucid to NIP-94

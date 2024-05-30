@@ -21,6 +21,7 @@ export default class InterplanetaryNostrum {
     this.port = options.port || 6455;
     this.store = options.store;
     this.subscriptions = new Map();
+    this.posters = new Set(options.posters || []);
     if (!this.store) throw new Error(`The "store" option is required.`);
     this.running = false;
   }
@@ -30,6 +31,17 @@ export default class InterplanetaryNostrum {
       event.lucid__indexedTags.push(`${k}${TAG_SEP}${v || ''}`);
     });
     await this.db.ref(`events/${event.id}`).set(event);
+  }
+  async runQuery (sid, channel, filters) {
+    if (!this.running) throw new Error(`Cannot run query while not running.`);
+    const queries = this.filtersToQueries(filters);
+    for (const q of queries) {
+      await q.forEach(res => {
+        const event = res.val();
+        delete event.lucid__indexedTags;
+        channel.send(['EVENT', sid, event]);
+      });
+    }
   }
   addSubscription (sid, channel, filters) {
     if (!this.running) throw new Error(`Cannot add subscription while not running.`);
@@ -78,7 +90,7 @@ export default class InterplanetaryNostrum {
   }
   async run () {
     this.running = true;
-    this.db = new AceBase('nostr', { storage: { path: this.store }});
+    this.db = new AceBase('nostr', { storage: { path: this.store }, logLevel: 'warn' });
     await this.db.ready();
     await Promise.all(
       ['pubkey', 'kind', 'created_at', ].map(k => this.db.indexes.create('events', k))
@@ -112,7 +124,8 @@ export default class InterplanetaryNostrum {
         pubkey = isValidAuthorizationHeader(
           req.headers.authorization || req.body.Authorization || req.body.authorization,
           'POST',
-          `${req.protocol}://${req.get('host')}${api_url}` // this may be incorrect but should work
+          `${req.protocol}://${req.get('host')}${api_url}`, // this may be incorrect but should work
+          this.posters
         );
       }
       catch (e) {
@@ -155,7 +168,8 @@ export default class InterplanetaryNostrum {
         pubkey = isValidAuthorizationHeader(
           req.headers.authorization || req.body.Authorization || req.body.authorization,
           'DELETE',
-          `${req.protocol}://${req.get('host')}${api_url}/${req.params.cid}`
+          `${req.protocol}://${req.get('host')}${api_url}/${req.params.cid}`,
+          this.posters
         );
       }
       catch (e) {
@@ -232,15 +246,13 @@ class RelayInstance {
     this.removeSubscription(sid);
   }
   async onREQ (sid, ...filters) {
-    this.addSubscription(sid, filters);
-    // XXX here we execute the queries and return something (see spec)
-    for (const event of events) {
-      if (matchFilters(filters, event)) this.send(['EVENT', sid, event]);
-    }
+    await this.parent.runQuery(sid, this, filters);
     this.send(['EOSE', sid]);
+    this.addSubscription(sid, filters);
   }
   async onEVENT (event) {
     if (!verifyEvent(event)) throw new Error('Event does not appear to be valid.');
+    if (!this.parent.posters.has(event.pubkey)) throw new Error('User is not accepted on this server.');
     await this.parent.storeEvent(event);
     this.send(['OK', event.id, true]);
   }
@@ -249,7 +261,7 @@ class RelayInstance {
 // Taken from https://github.com/nosdav/passport-nostr/.
 // Would reuse, but not exported and the default won't do full nip96.
 // Made it throw so that caller can deal with error
-function isValidAuthorizationHeader (authorization, method, url) {
+function isValidAuthorizationHeader (authorization, method, url, posters) {
   const base64String = authorization.replace(/Nostr\s+/, '');
   const decodedString = Buffer.from(base64String, 'base64').toString('utf-8');
   if (!decodedString) throw new Error(`No authorization string.`);
@@ -266,6 +278,7 @@ function isValidAuthorizationHeader (authorization, method, url) {
     throw new Error('Timestamp is not within the 60 second window.');
   }
   if (!verifyEvent(event)) throw new Error('Event does not appear to be valid.');
+  if (!posters.has(event.pubkey)) throw new Error('User is not accepted on this server.');
   return event.pubkey;
 }
 
