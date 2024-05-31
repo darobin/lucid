@@ -186,7 +186,8 @@ describe('Nostr Basics', () => {
   it('NIP-96 upload', async function () {
     this.timeout(10 * 1000);
     const cid = 'bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu';
-    const wtf = new File([(await readFile(rel('./fixtures/wtf.jpg'))).buffer], 'wtf.jpg', { type: 'image/jpeg' });
+    const wtfBuf = await readFile(rel('./fixtures/wtf.jpg'));
+    const wtf = new File([wtfBuf.buffer], 'wtf.jpg', { type: 'image/jpeg' });
     const body = new FormData();
     body.append('file', wtf, 'wtf.jpg');
     body.append('alt', 'The Wonderful WTF Cat');
@@ -209,7 +210,8 @@ describe('Nostr Basics', () => {
       else if (k === 'ox') ox94 = v;
       else if (k === 'cid') cid94 = v;
     })
-    equal(`http://${cid}.ipfs.localhost:${port}/`, url94, 'URL correct');
+    const gatewayURL = `http://${cid}.ipfs.localhost:${port}/`;
+    equal(gatewayURL, url94, 'URL correct');
     equal(cid, cid94, 'CID correct');
     equal('c7d01489080858c500065836c658f847a6ca67c4864619212be4f8200e4bbace', ox94, 'SHA correct');
 
@@ -217,9 +219,16 @@ describe('Nostr Basics', () => {
     equal('The Wonderful WTF Cat', dbEntry.alt, 'alt ok');
     equal('image/jpeg', dbEntry.content_type, 'media type ok');
 
+    // const gtw = await fetch(gatewayURL);
+    // we override the host header because Node's fetch does not resolve localhost subdomains the way browsers do
+    const gtw = await fetch(`http://localhost:${port}/`, { headers: { host: `${cid}.ipfs.localhost:${port}` }});
+    equal(200, gtw.status, 'gateway resource is there');
+    equal('image/jpeg', gtw.headers.get('content-type'), 'media type is correct');
+    const jpeg = await gtw.arrayBuffer();
+    // compare should be 0
+    ok(!wtfBuf.compare(Buffer.from(jpeg)), 'the resource is what we uploaded');
 
     // XXX
-    // - check that you get
     // - delete
     // - check that you don't get it back
   });

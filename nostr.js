@@ -112,7 +112,7 @@ export default class InterplanetaryNostrum {
       const meta = await this.db.ref(`cids/${cid}`).get();
       if (!meta.exists()) return res.status(404);
       const { content_type: mediaType } = meta.val();
-      res.type(mediaType).sendFile(join(this.store, cid), makeSendOptions(this.store));
+      res.type(mediaType).sendFile(cid, makeSendOptions(this.store));
     });
     app.get('/.well-known/nostr/nip96.json', (req, res) => {
       res.send({ api_url });
@@ -120,7 +120,6 @@ export default class InterplanetaryNostrum {
     app.post(api_url, async (req, res) => {
       let pubkey;
       try {
-        // NOTE: not sure if fileUpload() causes req.body to be processed or not
         // NOTE: note sure about case sensitivity in case the nip98 is passed from a form.
         pubkey = isValidAuthorizationHeader(
           req.headers.authorization || req.body?.Authorization || req.body?.authorization,
