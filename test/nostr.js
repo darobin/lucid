@@ -1,8 +1,8 @@
 
 import { ok, equal, deepStrictEqual, notEqual } from 'node:assert';
 import { join } from 'node:path';
-import { mkdtemp } from 'node:fs/promises';
-import { Buffer } from 'node:buffer';
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { Buffer, File } from 'node:buffer';
 import { tmpdir } from 'node:os';
 import { nextTick } from 'node:process';
 import getPort from 'get-port';
@@ -10,7 +10,9 @@ import WebSocket from 'ws';
 import { useWebSocketImplementation, Relay } from 'nostr-tools/relay';
 import { generateSecretKey, getPublicKey, finalizeEvent } from 'nostr-tools/pure';
 import InterplanetaryNostrum from '../nostr.js';
+import makeRel from '../lib/rel.js';
 
+const rel = makeRel(import.meta.url);
 let sk, pk, store, relay, client, port;
 
 before(async () => {
@@ -145,13 +147,12 @@ describe('Nostr Basics', () => {
     });
     return allThings;
   });
-  it('NIP-96', async () => {
+  it('NIP-96 metadata', async () => {
     const res = await fetch(`http://localhost:${port}/.well-known/nostr/nip96.json`);
     const nip96 = await res.json();
     deepStrictEqual(nip96, { api_url: '/api/nip96' });
   });
   it('NIP-98 authorization', async () => {
-    const url = `http://localhost:${port}/api/nip96`;
     const checkUpload = async (authzEvent, pubkey) => {
       const headers = {};
       if (authzEvent) {
@@ -159,20 +160,8 @@ describe('Nostr Basics', () => {
         if (pubkey) fev.pubkey = pubkey;
         headers.authorization = `Nostr ${Buffer.from(JSON.stringify(fev)).toString('base64')}`;
       }
-      const res = await fetch(url, { method: 'post', headers });
+      const res = await fetch(nip96URL(), { method: 'post', headers });
       return res.status;
-    };
-    const templateEvent = () => {
-      return {
-        kind: 27235,
-        tags: [
-          ['method', 'POST'],
-          ['u', url],
-        ],
-        content: '',
-        created_at: Math.floor(Date.now() / 1000) - 10,
-        pubkey: pk,
-      };
     };
     equal(401, await checkUpload(), 'No auth gets 401');
     const badKind = templateEvent();
@@ -194,6 +183,46 @@ describe('Nostr Basics', () => {
     equal(401, await checkUpload(badPerson, 'aaaaaaaa'), 'Wrong person gets 401');
     notEqual(401, await checkUpload(templateEvent()), 'Correct event does not get 401');
   });
+  it('NIP-96 upload', async function () {
+    this.timeout(10 * 1000);
+    const cid = 'bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu';
+    const wtf = new File([(await readFile(rel('./fixtures/wtf.jpg'))).buffer], 'wtf.jpg', { type: 'image/jpeg' });
+    const body = new FormData();
+    body.append('file', wtf, 'wtf.jpg');
+    body.append('alt', 'The Wonderful WTF Cat');
+    body.append('content_type', 'image/jpeg');
+
+    const postEvent = templateEvent();
+    const authorization = `Nostr ${Buffer.from(JSON.stringify(finalizeEvent(postEvent, sk))).toString('base64')}`;
+    const res = await fetch(nip96URL(), {
+      method: 'post',
+      headers: { authorization }, // don't specify content-type, it interferes with FormData DTRT
+      body,
+    });
+    equal(201, res.status, 'created');
+    const data = await res.json();
+    equal('success', data.status, 'status correct');
+    equal('created', data.message, 'message correct');
+    let url94, ox94, cid94;
+    data.nip94_event.tags.forEach(([k, v]) => {
+      if (k === 'url') url94 = v;
+      else if (k === 'ox') ox94 = v;
+      else if (k === 'cid') cid94 = v;
+    })
+    equal(`http://${cid}.ipfs.localhost:${port}/`, url94, 'URL correct');
+    equal(cid, cid94, 'CID correct');
+    equal('c7d01489080858c500065836c658f847a6ca67c4864619212be4f8200e4bbace', ox94, 'SHA correct');
+
+    const dbEntry = (await relay.db.ref(`cids/${cid}`).get()).val();
+    equal('The Wonderful WTF Cat', dbEntry.alt, 'alt ok');
+    equal('image/jpeg', dbEntry.content_type, 'media type ok');
+
+
+    // XXX
+    // - check that you get
+    // - delete
+    // - check that you don't get it back
+  });
 });
 
 
@@ -204,4 +233,21 @@ describe('Nostr Basics', () => {
 
 function now () {
   return Math.floor(Date.now() / 1000);
+}
+
+function templateEvent () {
+  return {
+    kind: 27235,
+    tags: [
+      ['method', 'POST'],
+      ['u', nip96URL()],
+    ],
+    content: '',
+    created_at: Math.floor(Date.now() / 1000) - 10,
+    pubkey: pk,
+  };
+}
+
+function nip96URL () {
+  return `http://localhost:${port}/api/nip96`;
 }

@@ -99,6 +99,7 @@ export default class InterplanetaryNostrum {
     const app = express();
     const api_url = '/api/nip96';
     app.use(fileUpload({
+      // debug: true,
       abortOnLimit: true,
       useTempFiles: true,
       tempFileDir: join(this.store, 'tmp'),
@@ -129,19 +130,20 @@ export default class InterplanetaryNostrum {
         );
       }
       catch (e) {
-        res.status(401).send({ error: e.message });
+        return res.status(401).send({ error: e.message });
       }
       if (!req.files?.file) return res.status(400).send({ error: 'No file uploaded.' });
       const cid = await fromStream(createReadStream(req.files.file.tempFilePath));
-      req.files.file.mv(join(this.store, cid), async (err) => {
+      const storedFile = join(this.store, cid);
+      req.files.file.mv(storedFile, async (err) => {
         if (err) return res.status(500).send({ error: 'Could not move file.' });
         await this.db.ref(`cids/${cid}`).set({
-          alt: req.body.alt, // nip96 recommended
-          media_type: req.body.media_type, // WARNING: this is not a media type, but avatar|banner to indicate usage
-          content_type: req.body.content_type || 'application/octet-stream', // the actual media type — XXX we should detect/reject if it isn't provided
+          alt: req.body?.alt || null, // nip96 recommended
+          media_type: req.body?.media_type || null, // WARNING: this is not a media type, but avatar|banner to indicate usage
+          content_type: req.body?.content_type || 'application/octet-stream', // the actual media type — XXX we should detect/reject if it isn't provided
         });
         await this.db.ref(`cids/${cid}/owners/${pubkey}`).set({ ts: new Date().toISOString() });
-        const ox = await sha256FromStream(createReadStream(req.files.file.tempFilePath));
+        const ox = await sha256FromStream(createReadStream(storedFile));
         res.status(201).send({
           status: 'success',
           message: 'created',
