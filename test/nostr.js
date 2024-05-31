@@ -228,17 +228,24 @@ describe('Nostr Basics', () => {
     // compare should be 0
     ok(!wtfBuf.compare(Buffer.from(jpeg)), 'the resource is what we uploaded');
 
-    // XXX
-    // - delete
-    // - check that you don't get it back
+    const delURL = `${nip96URL()}/${cid}`;
+    const deleteEvent = templateEvent();
+    deleteEvent.tags[0][1] = 'DELETE';
+    deleteEvent.tags[1][1] = delURL;
+    const delAuthz = `Nostr ${Buffer.from(JSON.stringify(finalizeEvent(deleteEvent, sk))).toString('base64')}`;
+    const del = await fetch(delURL, {
+      method: 'delete',
+      headers: { authorization: delAuthz },
+    });
+    equal(200, del.status, 'created');
+    const delData = await del.json();
+    equal('success', delData.status, 'status correct');
+    equal('Resource deleted', delData.message, 'message correct');
+
+    const delGtw = await fetch(`http://localhost:${port}/`, { headers: { host: `${cid}.ipfs.localhost:${port}` }});
+    equal(404, delGtw.status, 'gateway resource is gone');
   });
 });
-
-
-// XXX
-// - post content to API
-// - retrieve content off gateway
-
 
 function now () {
   return Math.floor(Date.now() / 1000);

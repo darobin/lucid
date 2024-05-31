@@ -110,7 +110,7 @@ export default class InterplanetaryNostrum {
       if (!/\w+\.ipfs\./.test(host)) return next();
       const cid = host.replace(/\.ipfs\..+/, '');
       const meta = await this.db.ref(`cids/${cid}`).get();
-      if (!meta.exists()) return res.status(404);
+      if (!meta.exists()) return res.status(404).send({ status: 'failure', message: 'Not found!' });
       const { content_type: mediaType } = meta.val();
       res.type(mediaType).sendFile(cid, makeSendOptions(this.store));
     });
