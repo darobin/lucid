@@ -1,7 +1,8 @@
 
-import { ok } from 'node:assert';
+import { ok, equal, deepStrictEqual, notEqual } from 'node:assert';
 import { join } from 'node:path';
 import { mkdtemp } from 'node:fs/promises';
+import { Buffer } from 'node:buffer';
 import { tmpdir } from 'node:os';
 import { nextTick } from 'node:process';
 import getPort from 'get-port';
@@ -10,21 +11,13 @@ import { useWebSocketImplementation, Relay } from 'nostr-tools/relay';
 import { generateSecretKey, getPublicKey, finalizeEvent } from 'nostr-tools/pure';
 import InterplanetaryNostrum from '../nostr.js';
 
-let sk, pk, store, relay, client;
+let sk, pk, store, relay, client, port;
 
-// XXX
-// - send event
-// - subscribe
-// - retrieve some events with filters
-// - check nip96
-// - post content to API
-// - check that auth works
-// - retrieve content off gateway
 before(async () => {
   useWebSocketImplementation(WebSocket);
   sk = generateSecretKey();
   pk = getPublicKey(sk);
-  const port = await getPort();
+  port = await getPort();
   store = await mkdtemp(join(tmpdir(), 'lucid-'));
   relay = new InterplanetaryNostrum({ port, store, posters: [pk] });
   await relay.run();
@@ -87,7 +80,6 @@ describe('Nostr Basics', () => {
     });
     return done;
   });
-
   it('subscriptions (more complex)', async () => {
     let gotFirstEvent, gotEOSE, timeoutWithoutSecondEvent, gotSecondEvent, gotThirdEvent;
     const allThings = Promise.all([
@@ -153,7 +145,62 @@ describe('Nostr Basics', () => {
     });
     return allThings;
   });
+  it('NIP-96', async () => {
+    const res = await fetch(`http://localhost:${port}/.well-known/nostr/nip96.json`);
+    const nip96 = await res.json();
+    deepStrictEqual(nip96, { api_url: '/api/nip96' });
+  });
+  it('NIP-98 authorization', async () => {
+    const url = `http://localhost:${port}/api/nip96`;
+    const checkUpload = async (authzEvent, pubkey) => {
+      const headers = {};
+      if (authzEvent) {
+        const fev = finalizeEvent(authzEvent, sk);
+        if (pubkey) fev.pubkey = pubkey;
+        headers.authorization = `Nostr ${Buffer.from(JSON.stringify(fev)).toString('base64')}`;
+      }
+      const res = await fetch(url, { method: 'post', headers });
+      return res.status;
+    };
+    const templateEvent = () => {
+      return {
+        kind: 27235,
+        tags: [
+          ['method', 'POST'],
+          ['u', url],
+        ],
+        content: '',
+        created_at: Math.floor(Date.now() / 1000) - 10,
+        pubkey: pk,
+      };
+    };
+    equal(401, await checkUpload(), 'No auth gets 401');
+    const badKind = templateEvent();
+    badKind.kind = 3;
+    equal(401, await checkUpload(badKind), 'Wrong kind gets 401');
+    const badMeth = templateEvent();
+    badMeth.tags[0][1] = 'patch';
+    equal(401, await checkUpload(badMeth), 'Wrong method gets 401');
+    const badURL = templateEvent();
+    badURL.tags[1][1] = 'https://berjon.com/';
+    equal(401, await checkUpload(badURL), 'Wrong URL gets 401');
+    const badPast = templateEvent();
+    badPast.created_at -= 120;
+    equal(401, await checkUpload(badPast), 'Wrong creation (past) gets 401');
+    const badFuture = templateEvent();
+    badFuture.created_at += 120;
+    equal(401, await checkUpload(badFuture), 'Wrong creation (future) gets 401');
+    const badPerson = templateEvent();
+    equal(401, await checkUpload(badPerson, 'aaaaaaaa'), 'Wrong person gets 401');
+    notEqual(401, await checkUpload(templateEvent()), 'Correct event does not get 401');
+  });
 });
+
+
+// XXX
+// - post content to API
+// - retrieve content off gateway
+
 
 function now () {
   return Math.floor(Date.now() / 1000);

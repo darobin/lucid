@@ -122,7 +122,7 @@ export default class InterplanetaryNostrum {
         // NOTE: not sure if fileUpload() causes req.body to be processed or not
         // NOTE: note sure about case sensitivity in case the nip98 is passed from a form.
         pubkey = isValidAuthorizationHeader(
-          req.headers.authorization || req.body.Authorization || req.body.authorization,
+          req.headers.authorization || req.body?.Authorization || req.body?.authorization,
           'POST',
           `${req.protocol}://${req.get('host')}${api_url}`, // this may be incorrect but should work
           this.posters
@@ -131,7 +131,7 @@ export default class InterplanetaryNostrum {
       catch (e) {
         res.status(401).send({ error: e.message });
       }
-      if (!req.files.file) return res.status(400).send({ error: 'No file uploaded.' });
+      if (!req.files?.file) return res.status(400).send({ error: 'No file uploaded.' });
       const cid = await fromStream(createReadStream(req.files.file.tempFilePath));
       req.files.file.mv(join(this.store, cid), async (err) => {
         if (err) return res.status(500).send({ error: 'Could not move file.' });
@@ -166,7 +166,7 @@ export default class InterplanetaryNostrum {
       try {
         // NOTE: note sure about case sensitivity in case the nip98 is passed from a form.
         pubkey = isValidAuthorizationHeader(
-          req.headers.authorization || req.body.Authorization || req.body.authorization,
+          req.headers.authorization || req.body?.Authorization || req.body?.authorization,
           'DELETE',
           `${req.protocol}://${req.get('host')}${api_url}/${req.params.cid}`,
           this.posters
@@ -274,6 +274,7 @@ class RelayInstance {
 // Would reuse, but not exported and the default won't do full nip96.
 // Made it throw so that caller can deal with error
 function isValidAuthorizationHeader (authorization, method, url, posters) {
+  if (!authorization) throw new Error(`No authorization string.`);
   const base64String = authorization.replace(/Nostr\s+/, '');
   const decodedString = Buffer.from(base64String, 'base64').toString('utf-8');
   if (!decodedString) throw new Error(`No authorization string.`);
@@ -283,7 +284,7 @@ function isValidAuthorizationHeader (authorization, method, url, posters) {
     throw new Error('No matching method tag found.');
   }
   if (!event.tags.find(tag => tag[0] === 'u' && tag[1] === url)) {
-    throw new Error('No matching u tag found. Expected u:', url);
+    throw new Error(`No matching u tag found. Expected u: "${url}"`);
   }
   // 60 seconds window
   if (Math.abs(event.created_at - Math.floor(Date.now() / 1000)) > 60) {
