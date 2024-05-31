@@ -1,5 +1,5 @@
 
-import { ok, equal } from 'node:assert';
+import { ok } from 'node:assert';
 import { join } from 'node:path';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -32,6 +32,9 @@ before(async () => {
 });
 after(async () => {
   return relay.stop(true);
+});
+afterEach(async () => {
+  return relay.db.ref('events').remove();
 });
 describe('Nostr Basics', () => {
   it('relay is running (no events)', (done) => {
@@ -114,7 +117,6 @@ describe('Nostr Basics', () => {
       tags: [],
       content: 'third',
     }, sk);
-    console.warn(`sending event 1`);
     await client.publish(firstEvent);
     let seenEOSE = false;
     let timeoutID;
@@ -123,12 +125,9 @@ describe('Nostr Basics', () => {
       ],
       {
         onevent (ev) {
-          console.warn(`====== ${ev.content} ====`);
-          console.warn(`event`, ev);
           if (ev.content === 'first') {
             ok(!seenEOSE, 'happened before EOSE');
             ok(true, 'got first event');
-            console.warn(`RESOLVING ONE`);
             gotFirstEvent();
           }
           else if (ev.content === 'second') {
@@ -137,7 +136,6 @@ describe('Nostr Basics', () => {
             ok(false, 'got second event');
           }
           else if (ev.content === 'third') {
-            console.warn(`RESOLVING THIRD, ${seenEOSE}`);
             ok(seenEOSE, 'happened after EOSE');
             ok(true, 'got third event');
             sub.close();
@@ -145,20 +143,15 @@ describe('Nostr Basics', () => {
           }
         },
         async oneose () {
-          console.warn(`RESOLVING EOSE`);
           seenEOSE = true;
           ok(true, 'got EOSE');
           gotEOSE();
-          timeoutID = setTimeout(() => timeoutWithoutSecondEvent, 200);
-          console.warn(`sending event 2, kind = ${secondEvent.kind}`);
+          timeoutID = setTimeout(timeoutWithoutSecondEvent, 200);
           await client.publish(secondEvent);
-          console.warn(`sending event 3`);
           await client.publish(thirdEvent);
         },
     });
-    console.warn(`before await`);
     return allThings;
-    // done();
   });
 });
 
