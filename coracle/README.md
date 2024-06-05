@@ -1,3 +1,11 @@
+
+# What ACTUALLY is this?
+
+This is a deliberately hard fork of Coracle. Not because there's anything wrong with Coracle,
+but because I needed a quick way to experiment in a Nostr client and I plan to break stuff.
+If the experimentation works out, I can do this right.
+
+
 # What is this?
 
 Coracle is a web client for the Nostr protocol focused on pushing the boundaries of what's unique about nostr, including relay selection and management, web-of-trust based moderation and content recommendations, and privacy protection. Check it out at [coracle.social](https://coracle.social).
