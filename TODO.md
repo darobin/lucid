@@ -37,7 +37,7 @@
 - [ ] A basic Nostr server that supports the minimum protocol and can expose events usefully
   - [x] finish onREQ
   - [x] write actual tests
-  - [ ] integrate into augury
+  - [x] integrate into augury
   - [x] add a configuration that has allowlisting of pubkeys
 - [x] A special way to provide content for IPFS
 - [x] Expose the IPFS over an HTTP gateway
