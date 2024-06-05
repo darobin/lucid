@@ -104,13 +104,14 @@
   const confirmAddCustomRelay = () => {
     const url = normalizeRelayUrl(customRelay)
 
-    if (!isShareableRelayUrl(url)) {
-      showWarning("Please provide a valid relay url")
-    } else {
+    // NOTE: disabling this check so we can use a relay with a port
+    // if (!isShareableRelayUrl(url)) {
+    //   showWarning("Please provide a valid relay url")
+    // } else {
       joinRelay(url)
       broadcastUserData([url])
       closeModal()
-    }
+    // }
   }
 
   const closeModal = () => {

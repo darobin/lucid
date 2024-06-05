@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { cwd } from "node:process";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, dirname } from "node:path";
 import { readFile } from "node:fs/promises";
 import { program } from 'commander';
 import InterplanetaryNostrum from "./nostr.js";
@@ -16,18 +16,19 @@ program
   .version(version)
   .option('-p, --port <number>', 'the port on which the WSS server runs', 6455)
   .option('-c, --config <path>', 'a configuration file')
-  .argument('[store]', 'path to the directory in which the data is saved')
-  .action(async (store, options) => {
+  .option('-s, --store', 'path to the directory in which the data is saved')
+  .action(async (options) => {
     let cfg = {};
+    let cfgFile;
     if (options.config) {
-      const cfgFile = isAbsolute(options.config) ? options.config : join(cwd(), options.config);
+      cfgFile = absolutise(options.config);
       cfg = JSON.parse(await readFile(cfgFile));
     }
     // CLI overrides config
     if (options.port) cfg.port = options.port;
-    if (store) cfg.store = store;
+    if (options.store) cfg.store = absolutise(options.store);
+    else if (cfgFile && cfg.store) cfg.store = absolutise(cfg.store, dirname(cfgFile));
     if (!cfg.store) throw new Error(`A store path must be given either in the configuration or as argument.`);
-    cfg.store = isAbsolute(cfg.store) ? cfg.store : join(cwd(), cfg.store);
 
     const n = new InterplanetaryNostrum(cfg);
     console.warn(`Augury running at wss://localhost:${cfg.port}/.`);
@@ -35,3 +36,7 @@ program
   })
 ;
 program.parse();
+
+function absolutise (pth, relTo = cwd()) {
+  return isAbsolute(pth) ? pth : join(relTo, pth);
+}
