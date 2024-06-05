@@ -1,0 +1,238 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .fa-beat-custom {
+    --fa-animation-duration: 0.4s;
+    --fa-fade-opacity: 0.6;
+    --fa-animation-iteration-count: 1;
+    --fa-beat-scale: 1.4;
+  }
+}
+
+@font-face {
+  font-family: "Satoshis";
+  font-style: normal;
+  font-weight: 400;
+  src:
+    local(""),
+    url("/fonts/Satoshi Symbol.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Lato";
+  font-style: normal;
+  font-weight: 400;
+  src:
+    local(""),
+    url("/fonts/Lato-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Lato";
+  font-style: bold;
+  font-weight: 600;
+  src:
+    local(""),
+    url("/fonts/Lato-Bold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Lato";
+  font-style: italic;
+  font-weight: 400;
+  src:
+    local(""),
+    url("/fonts/Italic.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Staatliches";
+  font-style: normal;
+  font-weight: 400;
+  src:
+    local(""),
+    url("/fonts/Staatliches Regular 400.ttf") format("truetype");
+}
+
+.montserrat {
+  font-family: Lato;
+  font-weight: 400;
+}
+
+body {
+  --bc-color-brand: var(--accent);
+}
+
+.staatliches {
+  font-family: Staatliches;
+}
+
+:root {
+  font-family: Lato;
+}
+
+html,
+body,
+#app,
+#app > div {
+  height: 100%;
+}
+
+/* Tippy dark */
+
+.tippy-box[data-theme~="dark"] {
+  background-color: #0f0f0e;
+  border: 1px solid #403d39;
+  box-shadow:
+    3px 3px 20px rgba(0, 0, 0, 0.1),
+    3px -3px 20px rgba(0, 0, 0, 0.1),
+    -3px 3px 20px rgba(0, 0, 0, 0.1),
+    -3px -3px 20px rgba(0, 0, 0, 0.1);
+}
+
+.tippy-box[data-theme~="dark"][data-placement^="top"] > .tippy-arrow {
+  bottom: -1px !important;
+}
+
+.tippy-box[data-theme~="dark"][data-placement^="top"] > .tippy-arrow:before {
+  border-top-color: #403d39;
+}
+
+.tippy-box[data-theme~="dark"][data-placement^="bottom"] > .tippy-arrow:before {
+  border-bottom-color: #403d39;
+}
+
+.tippy-box[data-theme~="dark"][data-placement^="left"] > .tippy-arrow:before {
+  border-left-color: #403d39;
+}
+
+.tippy-box[data-theme~="dark"][data-placement^="right"] > .tippy-arrow:before {
+  border-right-color: #403d39;
+}
+
+.tippy-box[data-theme~="dark"] > .tippy-backdrop {
+  background-color: #403d39;
+}
+
+.tippy-box[data-theme~="dark"] > .tippy-svg-arrow {
+  fill: #0f0f0e;
+}
+
+/* Tippy transparent */
+
+.tippy-box[data-theme~="transparent"] {
+  background-color: transparent;
+}
+
+.tippy-box[data-theme~="transparent"][data-placement^="top"] > .tippy-arrow:before {
+  border-color: transparent;
+}
+
+.tippy-box[data-theme~="transparent"] > .tippy-svg-arrow {
+  fill: transparent;
+}
+
+/* Long form content */
+
+.long-form-content h1 {
+  font-family: Staatliches;
+  font-size: 2em;
+  line-height: 1.4em;
+  margin-top: 1em;
+}
+
+.long-form-content h2 {
+  font-family: Staatliches;
+  font-size: 1.5em;
+  line-height: 1em;
+  margin-top: 0.7rem;
+}
+
+.long-form-content ul {
+  list-style: disc;
+  list-style-position: inside;
+  padding-left: 0;
+}
+
+.long-form-content ol {
+  list-style: decimal;
+  list-style-position: inside;
+  padding-left: 0;
+}
+
+.long-form-content li {
+  margin: 0.5rem 0;
+  padding-left: 20px;
+  text-indent: -20px;
+}
+
+.long-form-content li p {
+  display: inline;
+}
+
+.long-form-content a {
+  text-decoration: underline;
+}
+
+
+.long-form-content em {
+  font-family: sans-serif;
+}
+
+.long-form-content code {
+  background-color: var(--neutral-800);
+  line-height: 1.5em;
+  box-decoration-break: clone;
+  padding: 1px 0.2em;
+  border-radius: 3px;
+}
+
+.long-form-content pre code {
+  display: block;
+  overflow: auto;
+}
+
+.long-form-content blockquote {
+  border-left: 0.25rem solid var(--neutral-600);
+  padding: 1rem 0 1rem 1rem;
+}
+
+/* Datetime field */
+
+.date-time-field {
+  margin: -0.5rem !important;
+  padding: 0 !important;
+}
+
+.date-time-field input {
+  width: 100% !important;
+  border: none !important;
+  padding: 0.5rem !important;
+  --date-picker-background: transparent;
+  --date-picker-highlight-border: transparent;
+  --date-picker-highlight-shadow: transparent;
+}
+
+/* Code blocks */
+
+.code {
+  background-color: var(--neutral-800);
+  line-height: 1.5em;
+  box-decoration-break: clone;
+  padding: 1px 0.2em;
+}
+
+/* Event Calendar */
+
+.ec-day,
+.ec-button {
+  cursor: pointer;
+}
+
+/* Switches */
+
+.react-switch-bg {
+  border: 1px solid var(--neutral-600);
+}

@@ -1,0 +1,39 @@
+# Logs
+ROADMAP.md
+logs
+*.log
+*.pem
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.env.local
+
+node_modules
+dist
+dist-ssr
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+ssl
+
+scratch.md
+psql-tmux.json
+sandbox.sql
+
+# Generated on build
+public/icons
+public/images/apple-touch-icon-180x180.png
+public/images/favicon.ico
+public/images/maskable-icon-512x512.png
+public/images/pwa-*
+

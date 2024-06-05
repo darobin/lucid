@@ -1,0 +1,191 @@
+<script lang="ts">
+  import cx from "classnames"
+  import {onMount} from "svelte"
+  import {last, prop, objOf} from "ramda"
+  import {Handlerinformation, NostrConnect} from "nostr-tools/kinds"
+  import {tryJson} from "src/util/misc"
+  import {showWarning} from "src/partials/Toast.svelte"
+  import Anchor from "src/partials/Anchor.svelte"
+  import Tile from "src/partials/Tile.svelte"
+  import Input from "src/partials/Input.svelte"
+  import SearchSelect from "src/partials/SearchSelect.svelte"
+  import FlexColumn from "src/partials/FlexColumn.svelte"
+  import Heading from "src/partials/Heading.svelte"
+  import {
+    load,
+    hints,
+    fetchHandle,
+    getExtension,
+    withExtension,
+    loginWithExtension,
+    loginWithNostrConnect,
+  } from "src/engine"
+  import {router} from "src/app/util/router"
+  import {boot} from "src/app/state"
+
+  const signUp = () => router.at("signup").replaceModal()
+
+  const useBunker = () => router.at("login/bunker").replaceModal()
+
+  const useExtension = () =>
+    withExtension(async ext => {
+      const pubkey = ext && (await ext.getPublicKey())
+
+      if (pubkey) {
+        loginWithExtension(pubkey)
+        boot()
+      }
+    })
+
+  const usePrivateKey = () => router.at("login/privkey").replaceModal()
+
+  const usePublicKey = () => router.at("login/pubkey").replaceModal()
+
+  const onSubmit = async () => {
+    if (!username) {
+      return showWarning("Please enter a user name.")
+    }
+
+    if (!handler) {
+      return showWarning("Please select a login provider.")
+    }
+
+    // Fill in pubkey and relays if they entered a custom doain
+    if (!handler.pubkey) {
+      const info = await fetchHandle(`_@${handler.domain}`)
+
+      handler.pubkey = info.pubkey
+      handler.relays = info.nip46 || info.relays
+    }
+
+    if (!handler.relays) {
+      return showWarning("Sorry, we weren't able to find that provider.")
+    }
+
+    const success = await loginWithNostrConnect(username, handler)
+
+    if (success) {
+      boot()
+    } else {
+      showWarning("Sorry, we weren't able to log you in with that provider.")
+    }
+  }
+
+  let handlers = [
+    //  {
+    //    domain: "coracle-bunker.ngrok.io",
+    //    relays: ["wss://relay.nsecbunker.com", "wss://relay.damus.io"],
+    //    pubkey: "b6e0188cf22c58a96b5cf6f29014f140697196f149a2621536b12d50abf55aa0",
+    //  },
+    {
+      domain: "highlighter.com",
+      relays: ["wss://relay.nsecbunker.com", "wss://relay.damus.io"],
+      pubkey: "73c6bb92440a9344279f7a36aa3de1710c9198b1e9e8a394cd13e0dd5c994c63",
+    },
+    {
+      domain: "nsec.app",
+      relays: ["wss://relay.nsec.app"],
+      pubkey: "e24a86943d37a91ab485d6f9a7c66097c25ddd67e8bd1b75ed252a3c266cf9bb",
+    },
+  ]
+
+  let handler = handlers[0]
+  let username = ""
+
+  onMount(() => {
+    load({
+      relays: hints.ReadRelays().getUrls(),
+      filters: [
+        {
+          kinds: [Handlerinformation],
+          "#k": [NostrConnect.toString()],
+        },
+      ],
+      onEvent: async e => {
+        const content = tryJson(() => JSON.parse(e.content))
+
+        if (!content) {
+          return
+        }
+
+        const domain = last(content.nip05.split("@"))
+        const {pubkey, nip46: relays} = (await fetchHandle(`_@${domain}`)) || {}
+
+        if (handlers.some(h => h.domain === domain)) {
+          return
+        }
+
+        if (pubkey === e.pubkey) {
+          handlers = handlers.concat({pubkey, domain, relays})
+        }
+      },
+    })
+  })
+
+  document.title = "Log In"
+</script>
+
+<form on:submit={onSubmit}>
+  <FlexColumn narrow large>
+    <div class="text-center">
+      <Heading>Welcome!</Heading>
+      <p class="text-lg text-neutral-100">
+        Don't have an account yet?
+        <Anchor underline on:click={signUp} class="ml-1 text-neutral-100">Sign up</Anchor>
+      </p>
+    </div>
+    <div class="flex">
+      <Input bind:value={username} class="flex-grow rounded-r-none" placeholder="Username">
+        <i slot="before" class="fa fa-user-astronaut" />
+      </Input>
+      <SearchSelect
+        bind:value={handler}
+        defaultOptions={handlers}
+        getKey={prop("domain")}
+        termToItem={objOf("domain")}
+        inputClass="rounded-l-none border-l-0 flex-grow"
+        search={() => handlers}>
+        <i slot="before" class="fa fa-at relative top-[2px]" />
+        <span slot="item" let:item>{item.domain}</span>
+      </SearchSelect>
+    </div>
+    <Anchor button accent on:click={onSubmit}>Log In</Anchor>
+    <div class="relative flex items-center gap-4">
+      <div class="h-px flex-grow bg-neutral-600" />
+      <div class="staatliches text-xl">Or</div>
+      <div class="h-px flex-grow bg-neutral-600" />
+    </div>
+    <div
+      class={cx(
+        "relative grid justify-center gap-2 xs:gap-5",
+        getExtension() ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3",
+      )}>
+      <Tile class="cursor-pointer bg-tinted-800" on:click={useBunker}>
+        <div>
+          <i class="fa fa-box fa-xl" />
+        </div>
+        <span>Bunker URL</span>
+      </Tile>
+      {#if getExtension()}
+        <Tile class="cursor-pointer bg-tinted-800" on:click={useExtension}>
+          <div>
+            <i class="fa fa-puzzle-piece fa-xl" />
+          </div>
+          <span>Extension</span>
+        </Tile>
+      {/if}
+      <Tile class="cursor-pointer bg-tinted-800" on:click={usePrivateKey}>
+        <div>
+          <i class="fa fa-key fa-xl" />
+        </div>
+        <span>Private Key</span>
+      </Tile>
+      <Tile class="cursor-pointer bg-tinted-800" on:click={usePublicKey}>
+        <div>
+          <i class="fa fa-eye fa-xl" />
+        </div>
+        <span>Public Key</span>
+      </Tile>
+    </div>
+  </FlexColumn>
+</form>
