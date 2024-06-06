@@ -12,6 +12,7 @@ import { createSHA256 } from 'hash-wasm';
 import { nanoid } from 'nanoid';
 import { fromStream } from './cid.js';
 import { makeSendOptions } from './server.js';
+import Logger from './lib/logger.js';
 
 const TAG_SEP = '$__$';
 
@@ -24,17 +25,20 @@ export default class InterplanetaryNostrum {
     this.posters = new Set(options.posters || []);
     if (!this.store) throw new Error(`The "store" option is required.`);
     this.running = false;
+    this.debug = new Logger(options.logLevel);
   }
   async storeEvent (event) {
     event.lucid__indexedTags = [];
     (event.tags || []).forEach(([k, v]) => {
       event.lucid__indexedTags.push(`${k}${TAG_SEP}${v || ''}`);
     });
+    this.debug.verbose(`Storing ${event.id} of kind ${event.kind}.`);
     await this.db.ref(`events/${event.id}`).set(event);
   }
   async runQuery (sid, channel, filters) {
     if (!this.running) throw new Error(`Cannot run query while not running.`);
     const queries = this.filtersToQueries(filters);
+    this.debug.verbose(`Running queries ${sid} in relay instance ${channel.id}.`);
     for (const q of queries) {
       await q.forEach(res => {
         const event = res.val();
@@ -46,6 +50,7 @@ export default class InterplanetaryNostrum {
   addSubscription (sid, channel, filters) {
     if (!this.running) throw new Error(`Cannot add subscription while not running.`);
     const queries = this.filtersToQueries(filters);
+    this.debug.verbose(`Adding subscription ${sid} for relay instance ${channel.id}.`);
     queries.forEach(q => {
       q.on('add', (match) => {
         const event = match.snapshot.val();
@@ -57,6 +62,7 @@ export default class InterplanetaryNostrum {
   }
   removeSubscription (sid, channel) {
     if (!this.running) throw new Error(`Cannot remove subscription while not running.`);
+    this.debug.verbose(`Removing subscription ${sid} for relay instance ${channel.id}.`);
     const { queries } = this.subscriptions.get(`${channel.id}${TAG_SEP}${sid}`);
     queries.forEach(q => q.off('add'));
   }
@@ -89,9 +95,11 @@ export default class InterplanetaryNostrum {
     });
   }
   async run () {
+    this.debug.log(`Augury starting up…`);
     this.running = true;
     this.db = new AceBase('nostr', { storage: { path: this.store }, logLevel: 'error' });
     await this.db.ready();
+    this.debug.log(`- database ready`);
     await Promise.all(
       ['pubkey', 'kind', 'created_at', ].map(k => this.db.indexes.create('events', k))
     );
@@ -107,17 +115,24 @@ export default class InterplanetaryNostrum {
     // subdomains first
     app.get('/', async (req, res, next) => {
       const host = req.hostname;
+      this.debug.log(`Serving / for ${host}`);
       if (!/\w+\.ipfs\./.test(host)) return next();
       const cid = host.replace(/\.ipfs\..+/, '');
       const meta = await this.db.ref(`cids/${cid}`).get();
-      if (!meta.exists()) return res.status(404).send({ status: 'failure', message: 'Not found!' });
+      if (!meta.exists()) {
+        this.debug.warn(`Serving / for ${host} not found.`);
+        return res.status(404).send({ status: 'failure', message: 'Not found!' });
+      }
       const { content_type: mediaType } = meta.val();
+      this.debug.success(`➯ ${cid} (${mediaType})`);
       res.type(mediaType).sendFile(cid, makeSendOptions(this.store));
     });
     app.get('/.well-known/nostr/nip96.json', (req, res) => {
+      this.debug.success(`➯ /.well-known/nostr/nip96.json`);
       res.send({ api_url });
     });
     app.post(api_url, async (req, res) => {
+      this.debug.log(`Upload to ${api_url}`);
       let pubkey;
       try {
         // NOTE: note sure about case sensitivity in case the nip98 is passed from a form.
@@ -129,13 +144,20 @@ export default class InterplanetaryNostrum {
         );
       }
       catch (e) {
+        this.debug.warn(`401 for upload: ${e.message}.`);
         return res.status(401).send({ error: e.message });
       }
-      if (!req.files?.file) return res.status(400).send({ error: 'No file uploaded.' });
+      if (!req.files?.file) {
+        this.debug.warn(`400 for upload: No file uploaded.`);
+        return res.status(400).send({ error: 'No file uploaded.' });
+      }
       const cid = await fromStream(createReadStream(req.files.file.tempFilePath));
       const storedFile = join(this.store, cid);
       req.files.file.mv(storedFile, async (err) => {
-        if (err) return res.status(500).send({ error: 'Could not move file.' });
+        if (err) {
+          this.debug.error(`500 Could not move file.`);
+          return res.status(500).send({ error: 'Could not move file.' });
+        }
         await this.db.ref(`cids/${cid}`).set({
           alt: req.body?.alt || null, // nip96 recommended
           media_type: req.body?.media_type || null, // WARNING: this is not a media type, but avatar|banner to indicate usage
@@ -143,6 +165,7 @@ export default class InterplanetaryNostrum {
         });
         await this.db.ref(`cids/${cid}/owners/${pubkey}`).set({ ts: new Date().toISOString() });
         const ox = await sha256FromStream(createReadStream(storedFile));
+        this.debug.success(`➯ Uploaded ${cid} for ${pubkey}`);
         res.status(201).send({
           status: 'success',
           message: 'created',
@@ -159,10 +182,12 @@ export default class InterplanetaryNostrum {
     // For compatibility with nip96 that isn't very flexible, we redirect to the actually useful URL
     app.get(`${api_url}/:cid`, (req, res) => {
       const cid = req.params.cid.replace(/\.\w+$/, ''); // remove extension if there
+      this.debug.log(`Redirect 308 from ${api_url}/${cid}`);
       res.redirect(308, cidSubdomain(req, cid));
     });
     app.delete(`${api_url}/:cid`, async (req, res) => {
       const cid = req.params.cid.replace(/\.\w+$/, ''); // remove extension if there
+      this.debug.log(`Deleting ${cid}`);
       let pubkey;
       try {
         // NOTE: note sure about case sensitivity in case the nip98 is passed from a form.
@@ -174,6 +199,7 @@ export default class InterplanetaryNostrum {
         );
       }
       catch (e) {
+        this.debug.warn(`401 for deletion: ${e.message}.`);
         res.status(401).send({ error: e.message });
       }
       await this.db.ref(`cids/${cid}/owners/${pubkey}`).remove();
@@ -187,24 +213,30 @@ export default class InterplanetaryNostrum {
       }
       // if there are no owners left, we remove
       if (isEmpty) {
+        this.debug.log(`${cid} has no owners left`);
         await this.db.ref(`cids/${cid}`).remove();
         await rm(join(this.store, cid));
       }
+      this.debug.success(`➯ Deleted ${cid} for ${pubkey}`);
       res.send({
         status: 'success',
         message: 'Resource deleted',
       });
     });
     this.http = app.listen(this.port);
+    this.debug.log(`- HTTP server listening on port ${this.port}`);
     this.wss = new WebSocketServer({ server: this.http, clientTracking: true });
+    this.debug.log(`- Web Socket server listening`);
     this.wss.on('connection', (s) => {
+      this.debug.log(`New connection`);
       const nr = new RelayInstance(s, this);
       s.on('message', async (msg) => await nr.message(msg));
       s.on('close', () => nr.close());
-      s.on('error', err => console.warn(`Web socket error`, err));
+      s.on('error', err => this.debug.error(`Web socket error`, err));
     });
   }
   async stop (force) {
+    this.debug.log(`Augury shutting down…`);
     return Promise.all([
       this.db ? this.db.close() : Promise.resolve(),
       this.http
@@ -231,9 +263,11 @@ class RelayInstance {
     this.id = nanoid();
   }
   send (msg) {
+    this.parent.verbose(JSON.stringify(msg));
     this.socket.send(JSON.stringify(msg));
   }
   close () {
+    this.parent.log(`Closing channel ${this.id}`);
     this.socket.close();
     this.parent.removeAllSubscriptions(this);
   }
@@ -245,25 +279,45 @@ class RelayInstance {
   }
   async message (msg) {
     try { msg = JSON.parse(msg); }
-    catch (e) { this.send(['NOTICE', '', 'Unable to parse message']); }
+    catch (e) {
+      this.parent.warn(`Unable to parse message (${this.id})`);
+      this.send(['NOTICE', '', 'Unable to parse message']);
+    }
 
     let verb, payload;
     try { [verb, ...payload] = msg; }
-    catch (e) { this.send(['NOTICE', '', 'Unable to read message']); }
+    catch (e) {
+      this.parent.warn(`Unable to read message (${this.id})`);
+      this.send(['NOTICE', '', 'Unable to read message']);
+    }
 
     const handler = this[`on${verb}`];
-    if (handler) await handler.call(this, ...payload);
-    else this.send(['NOTICE', '', 'Unable to handle message']);
+    if (handler) {
+      try {
+        await handler.call(this, ...payload);
+      }
+      catch (err) {
+        this.parent.warn(`${err.message} (${this.id})`);
+      }
+    }
+    else {
+      this.parent.warn(`Unable to handle message (${this.id})`);
+      this.send(['NOTICE', '', 'Unable to handle message']);
+    }
   }
   async onCLOSE (sid) {
+    this.parent.log(`Closing subscription ${sid} (${this.id})`);
     this.removeSubscription(sid);
   }
   async onREQ (sid, ...filters) {
+    this.parent.log(`New subscription ${sid} (${this.id})`);
     await this.parent.runQuery(sid, this, filters);
     this.send(['EOSE', sid]);
+    this.parent.log(`Send EOSE for ${sid}, now listening (${this.id})`);
     this.addSubscription(sid, filters);
   }
   async onEVENT (event) {
+    this.parent.log(`Event ${event.kind} id=${event.id} (${this.id})`);
     if (!verifyEvent(event)) throw new Error('Event does not appear to be valid.');
     if (!this.parent.posters.has(event.pubkey)) throw new Error('User is not accepted on this server.');
     await this.parent.storeEvent(event);

@@ -17,6 +17,7 @@ program
   .option('-p, --port <number>', 'the port on which the WSS server runs', 6455)
   .option('-c, --config <path>', 'a configuration file')
   .option('-s, --store', 'path to the directory in which the data is saved')
+  .option('-l, --log-level', 'logging level (verbose|log|warn|error)', 'log')
   .action(async (options) => {
     let cfg = {};
     let cfgFile;
@@ -26,6 +27,7 @@ program
     }
     // CLI overrides config
     if (options.port) cfg.port = options.port;
+    if (options.logLevel) cfg.logLevel = options.logLevel;
     if (options.store) cfg.store = absolutise(options.store);
     else if (cfgFile && cfg.store) cfg.store = absolutise(cfg.store, dirname(cfgFile));
     if (!cfg.store) throw new Error(`A store path must be given either in the configuration or as argument.`);

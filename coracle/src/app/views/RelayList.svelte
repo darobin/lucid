@@ -102,7 +102,11 @@
   }
 
   const confirmAddCustomRelay = () => {
-    const url = normalizeRelayUrl(customRelay)
+    let url = normalizeRelayUrl(customRelay)
+    console.warn(`☄️ relay=${customRelay}, normal=${url}`);
+    // NOTE: undoing normalisation to secure WSS to make local easier
+    if (/^ws:/.test(customRelay)) url = url.replace(/^wss:/, 'ws:');
+    console.warn(`☄️ fix=${url}`);
 
     // NOTE: disabling this check so we can use a relay with a port
     // if (!isShareableRelayUrl(url)) {
