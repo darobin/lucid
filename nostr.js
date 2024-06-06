@@ -13,6 +13,7 @@ import { nanoid } from 'nanoid';
 import { fromStream } from './cid.js';
 import { makeSendOptions } from './server.js';
 import Logger from './lib/logger.js';
+import Watcher from './watcher.js';
 
 const TAG_SEP = '$__$';
 
@@ -63,8 +64,8 @@ export default class InterplanetaryNostrum {
   removeSubscription (sid, channel) {
     if (!this.running) throw new Error(`Cannot remove subscription while not running.`);
     this.debug.verbose(`Removing subscription ${sid} for relay instance ${channel.id}.`);
-    const { queries } = this.subscriptions.get(`${channel.id}${TAG_SEP}${sid}`);
-    queries.forEach(q => q.off('add'));
+    const { queries } = this.subscriptions.get(`${channel.id}${TAG_SEP}${sid}`) || {};
+    (queries || []).forEach(q => q.off('add'));
   }
   removeAllSubscriptions (channel) {
     [...this.subscriptions.keys()]
@@ -106,11 +107,20 @@ export default class InterplanetaryNostrum {
     await this.db.indexes.create('events', 'lucid__indexedTags', { type: 'array' });
     const app = express();
     const api_url = '/api/nip96';
+    const makeAPIURL = (req) => `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}${api_url}`;
+    // we allow full path control
+    app.use((req, res, next) => {
+      res.setHeader('access-control-allow-origin', '*');
+      res.setHeader('access-control-allow-methods', 'get, post, delete');
+      res.setHeader('access-control-allow-headers', 'authorization');
+      next();
+    });
     app.use(fileUpload({
       // debug: true,
       abortOnLimit: true,
       useTempFiles: true,
       tempFileDir: join(this.store, 'tmp'),
+      parseNested: true, // lol, not in the spec
     }));
     // subdomains first
     app.get('/', async (req, res, next) => {
@@ -129,7 +139,8 @@ export default class InterplanetaryNostrum {
     });
     app.get('/.well-known/nostr/nip96.json', (req, res) => {
       this.debug.success(`➯ /.well-known/nostr/nip96.json`);
-      res.send({ api_url });
+      // console.warn(req);
+      res.send({ api_url: makeAPIURL(req) });
     });
     app.post(api_url, async (req, res) => {
       this.debug.log(`Upload to ${api_url}`);
@@ -139,7 +150,7 @@ export default class InterplanetaryNostrum {
         pubkey = isValidAuthorizationHeader(
           req.headers.authorization || req.body?.Authorization || req.body?.authorization,
           'POST',
-          `${req.protocol}://${req.get('host')}${api_url}`, // this may be incorrect but should work
+          makeAPIURL(req), // this may be incorrect but should work
           this.posters
         );
       }
@@ -151,9 +162,11 @@ export default class InterplanetaryNostrum {
         this.debug.warn(`400 for upload: No file uploaded.`);
         return res.status(400).send({ error: 'No file uploaded.' });
       }
-      const cid = await fromStream(createReadStream(req.files.file.tempFilePath));
+      // This is a fucking mess.
+      const file = Array.isArray(req.files.file) ? (req.files.file[0] || req.files.file['']) : req.files.file;
+      const cid = await fromStream(createReadStream(file.tempFilePath));
       const storedFile = join(this.store, cid);
-      req.files.file.mv(storedFile, async (err) => {
+      file.mv(storedFile, async (err) => {
         if (err) {
           this.debug.error(`500 Could not move file.`);
           return res.status(500).send({ error: 'Could not move file.' });
@@ -194,7 +207,7 @@ export default class InterplanetaryNostrum {
         pubkey = isValidAuthorizationHeader(
           req.headers.authorization || req.body?.Authorization || req.body?.authorization,
           'DELETE',
-          `${req.protocol}://${req.get('host')}${api_url}/${req.params.cid}`,
+          `${makeAPIURL(req)}${req.params.cid}`,
           this.posters
         );
       }
@@ -234,6 +247,7 @@ export default class InterplanetaryNostrum {
       s.on('close', () => nr.close());
       s.on('error', err => this.debug.error(`Web socket error`, err));
     });
+    this.debug.success(`Augury running at wss://localhost:${this.port}/.`);
   }
   async stop (force) {
     this.debug.log(`Augury shutting down…`);
@@ -260,14 +274,15 @@ class RelayInstance {
   constructor (s, p) {
     this.socket = s;
     this.parent = p;
+    this.debug = this.parent.debug;
     this.id = nanoid();
   }
   send (msg) {
-    this.parent.verbose(JSON.stringify(msg));
+    this.debug.verbose(JSON.stringify(msg));
     this.socket.send(JSON.stringify(msg));
   }
   close () {
-    this.parent.log(`Closing channel ${this.id}`);
+    this.debug.log(`Closing channel ${this.id}`);
     this.socket.close();
     this.parent.removeAllSubscriptions(this);
   }
@@ -280,15 +295,15 @@ class RelayInstance {
   async message (msg) {
     try { msg = JSON.parse(msg); }
     catch (e) {
-      this.parent.warn(`Unable to parse message (${this.id})`);
-      this.send(['NOTICE', '', 'Unable to parse message']);
+      this.debug.warn(`Unable to parse message (${this.id})`);
+      this.send(['NOTICE', 'Unable to parse message']);
     }
 
     let verb, payload;
     try { [verb, ...payload] = msg; }
     catch (e) {
-      this.parent.warn(`Unable to read message (${this.id})`);
-      this.send(['NOTICE', '', 'Unable to read message']);
+      this.debug.warn(`Unable to read message (${this.id})`);
+      this.send(['NOTICE', 'Unable to read message']);
     }
 
     const handler = this[`on${verb}`];
@@ -297,27 +312,27 @@ class RelayInstance {
         await handler.call(this, ...payload);
       }
       catch (err) {
-        this.parent.warn(`${err.message} (${this.id})`);
+        this.debug.warn(`${err.message} (${this.id})`);
       }
     }
     else {
-      this.parent.warn(`Unable to handle message (${this.id})`);
-      this.send(['NOTICE', '', 'Unable to handle message']);
+      this.debug.warn(`Unable to handle message (${this.id})`);
+      this.send(['NOTICE', 'Unable to handle message']);
     }
   }
   async onCLOSE (sid) {
-    this.parent.log(`Closing subscription ${sid} (${this.id})`);
+    this.debug.log(`Closing subscription ${sid} (${this.id})`);
     this.removeSubscription(sid);
   }
   async onREQ (sid, ...filters) {
-    this.parent.log(`New subscription ${sid} (${this.id})`);
+    this.debug.log(`New subscription ${sid} (${this.id})`);
     await this.parent.runQuery(sid, this, filters);
     this.send(['EOSE', sid]);
-    this.parent.log(`Send EOSE for ${sid}, now listening (${this.id})`);
+    this.debug.log(`Send EOSE for ${sid}, now listening (${this.id})`);
     this.addSubscription(sid, filters);
   }
   async onEVENT (event) {
-    this.parent.log(`Event ${event.kind} id=${event.id} (${this.id})`);
+    this.debug.log(`Event ${event.kind} id=${event.id} for ${event.pubkey} (${this.id})`);
     if (!verifyEvent(event)) throw new Error('Event does not appear to be valid.');
     if (!this.parent.posters.has(event.pubkey)) throw new Error('User is not accepted on this server.');
     await this.parent.storeEvent(event);
@@ -334,6 +349,7 @@ function isValidAuthorizationHeader (authorization, method, url, posters) {
   const decodedString = Buffer.from(base64String, 'base64').toString('utf-8');
   if (!decodedString) throw new Error(`No authorization string.`);
   const event = JSON.parse(decodedString);
+  console.warn();
   if (event.kind !== 27235) throw new Error(`Failure: event.kind is "${event.kind}" instead of 27235.`);
   if (!event.tags.find(tag => tag[0] === 'method' && tag[1] === method)) {
     throw new Error('No matching method tag found.');
@@ -361,5 +377,5 @@ async function sha256FromStream (s) {
 }
 
 function cidSubdomain (req, cid) {
-  return `${req.protocol}://${cid}.ipfs.${req.get('host')}/`;
+  return `${req.get('x-forwarded-proto') || req.protocol}://${cid}.ipfs.${req.get('host')}/`;
 }

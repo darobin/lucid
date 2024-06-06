@@ -33,7 +33,6 @@ program
     if (!cfg.store) throw new Error(`A store path must be given either in the configuration or as argument.`);
 
     const n = new InterplanetaryNostrum(cfg);
-    console.warn(`Augury running at wss://localhost:${cfg.port}/.`);
     await n.run();
   })
 ;
