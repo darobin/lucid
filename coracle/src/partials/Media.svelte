@@ -16,8 +16,16 @@
   export let fullSize = false
 
   const loadPreview = async () => {
-    const json = await Fetch.postJson(dufflepud("link/preview"), {url})
-
+    // NOTE: made this change because I don't want a dufflepud for local dev,
+    // and also why not use the OG image if there's no preview?
+    let json;
+    try {
+      json = await Fetch.postJson(dufflepud("link/preview"), {url})
+    }
+    catch (err) {
+      return { image: url }
+    }
+    
     if (!json.title && !json.image) {
       throw new Error("Unable to load preview")
     }

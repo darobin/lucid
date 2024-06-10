@@ -10,10 +10,15 @@ import { verifyEvent } from 'nostr-tools';
 import { AceBase } from 'acebase';
 import { createSHA256 } from 'hash-wasm';
 import { nanoid } from 'nanoid';
+import { fileTypeFromFile } from 'file-type';
+import mime from 'mime-types';
 import { fromStream } from './cid.js';
 import { makeSendOptions } from './server.js';
 import Logger from './lib/logger.js';
-import Watcher from './watcher.js';
+
+// XXX
+// - need to look at the media type ourselves, of course clients don't provide it
+// - local preview thing doesn't seem to be hitting the origin (it may be asking another server)
 
 const TAG_SEP = '$__$';
 
@@ -166,6 +171,12 @@ export default class InterplanetaryNostrum {
       const file = Array.isArray(req.files.file) ? (req.files.file[0] || req.files.file['']) : req.files.file;
       const cid = await fromStream(createReadStream(file.tempFilePath));
       const storedFile = join(this.store, cid);
+      // getting the right media type is work
+      // trust, in order: the person uploading, the magic bytes, the provided file name, a default
+      let content_type = req.body?.content_type;
+      if (!content_type) content_type = (await fileTypeFromFile(file.tempFilePath))?.mime;
+      if (!content_type && file.name) content_type = mime.lookup(file.name);
+      if (!content_type) content_type = 'application/octet-stream';
       file.mv(storedFile, async (err) => {
         if (err) {
           this.debug.error(`500 Could not move file.`);
@@ -174,7 +185,7 @@ export default class InterplanetaryNostrum {
         await this.db.ref(`cids/${cid}`).set({
           alt: req.body?.alt || null, // nip96 recommended
           media_type: req.body?.media_type || null, // WARNING: this is not a media type, but avatar|banner to indicate usage
-          content_type: req.body?.content_type || 'application/octet-stream', // the actual media type — XXX we should detect/reject if it isn't provided
+          content_type,
         });
         await this.db.ref(`cids/${cid}/owners/${pubkey}`).set({ ts: new Date().toISOString() });
         const ox = await sha256FromStream(createReadStream(storedFile));
