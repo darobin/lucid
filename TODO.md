@@ -34,7 +34,7 @@
 
 ## Nostrify — IPFS
 
-- [ ] A basic Nostr server that supports the minimum protocol and can expose events usefully
+- [x] A basic Nostr server that supports the minimum protocol and can expose events usefully
   - [x] finish onREQ
   - [x] write actual tests
   - [x] integrate into augury
@@ -42,7 +42,7 @@
 - [x] A special way to provide content for IPFS
 - [x] Expose the IPFS over an HTTP gateway
 - [ ] Mimic IPNI over Nostr? Or register with IPNI?
-- [ ] Tinker with a client that will upload this way
+- [x] Tinker with a client that will upload this way
 - [ ] add ipfs/lucid to NIP-94
 - [ ] add a field to NIP-96 to indicate that the server produces URLs that are IPFS-gateway compatible
 

@@ -145,7 +145,7 @@ export default class InterplanetaryNostrum {
     app.get('/.well-known/nostr/nip96.json', (req, res) => {
       this.debug.success(`➯ /.well-known/nostr/nip96.json`);
       // console.warn(req);
-      res.send({ api_url: makeAPIURL(req) });
+      res.send({ api_url: makeAPIURL(req), ipfs: true });
     });
     app.post(api_url, async (req, res) => {
       this.debug.log(`Upload to ${api_url}`);

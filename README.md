@@ -131,3 +131,83 @@ Configuration updated:
 - https://bafkr4ickhymp67xqfakp4qysyep5hgwmul5lucymb7ttxfbaqkbuap355i.ipfs.localhost/ ➯ /cat.svg
 - https://bafkr4idcy33utsake6atvbagnojkn7odp7mdo6n7tvspd4ndnewphj67xu.ipfs.localhost/ ➯ /wtf.jpg
 ```
+
+## Nostr IPFS
+
+The [high-level overview of the Nostr protocol](https://github.com/nostr-protocol/nostr) has this
+opinionated statement about its architecture:
+
+> It doesn't rely on any trusted central server, hence it is resilient; it is based on cryptographic keys and 
+> signatures, so it is tamperproof; it does not rely on P2P techniques, and therefore it works.
+
+I experimented with a Nostr integration because that aligns well with IPFS. IPFS is often thought of
+as operating atop a DHT, but that is only *one* way of doing IPFS. As per the [IPFS Principles](https://specs.ipfs.tech/architecture/principles/),
+IPFS is transport agnostic, and HTTP gateways are an excellent way of using IPFS.
+
+In this repo, `augury.js` is a minimalistic but usable Nostr relay server. Its usage is simple:
+
+```
+Usage: augury [options]
+
+An experimental Nostr server that integrates with IPFS
+
+Options:
+  -V, --version        output the version number
+  -p, --port <number>  the port on which the WSS server runs (default: 6455)
+  -c, --config <path>  a configuration file
+  -s, --store          path to the directory in which the data is saved
+  -l, --log-level      logging level (verbose|log|warn|error)
+  -h, --help           display help for command
+```
+
+The configuration file is a JSON file that has the same options as the CLI above (with `logLevel` for `--log-level`)
+as well as an extra `posters` field that is an array of Nostr pubkeys (formatted as they appear on Nostr events)
+who are allowed to post to that server.
+
+If you run `augury.js -c some/config.json`, then you'll have a Nostr relay server running. Because of some
+annoyance with how web sockets work, it's better to run it not directly on `localhost` but using a local
+wildcard domain name. I use `dnsmasq` to resolve `augury.bast` locally as well as a Caddy server configured thus:
+
+```
+https://*.tile.augury.bast, https://*.ipfs.augury.bast, https://*.augury.bast, https://augury.bast {
+	tls internal {
+		on_demand
+	}
+	reverse_proxy http://localhost:6455
+}
+```
+
+(You might get away with `internal` instead of `on_demand`.)
+
+This Augury Nostr relay server has extras compared to regular Nostr relays:
+
+- It has an extension to [NIP-94](https://github.com/nostr-protocol/nips/blob/master/94.md) that supports a
+  `cid` tag on resource metadata to capture the CID for a resource.
+- It has an extension to [NIP-96](https://github.com/nostr-protocol/nips/blob/master/96.md) that conveys the
+  fact that a NIP-96 endpoint is IPFS compatible (it adds an `ipfs: true` field).
+
+These features were designed and implemented so that they add IPFS support to Nostr while creating the smallest
+amount of difference possible. And, importantly, *no change to the Nostr client is needed*. Essentially:
+
+- NIP-96 works as usual.
+- The preference is to expose IPFS CIDs at subdomain gateways (`https://<CID>.ipfs.<DOMAIN>/`), which NIP-96
+  doesn't immediately support (it expects the resources to live as sub-paths of the defined API URL). In order
+  to bridge the two, this exposes the usual operations on the sub-path of the API URL, but redirects (308) the
+  `GET` operation to the corresponding IPFS subdomain gateway.
+
+Inside `coracle` is a lightly modified [Coracle](https://github.com/coracle-social/coracle) client that can 
+be used to interface with this Nostr relay. (The only modification is that Coracle bails if you lack a Dufflepud 
+preview server, this falls back to just using the original file.) Run it with `yarn dev` in the subdirectory.
+(Another Nostr client should just work as well.)
+
+Configure your local relay in the client:
+
+![UI showing the configured relay](img/relay.png)
+
+Create a post with attachments:
+
+![Nostr post with three cat pictures](img/cats.png)
+
+The images are available at a subdomain gateway URL:
+
+![Subdomain gateway URL in the browser, with beauteous cat face](img/wtf.png)
